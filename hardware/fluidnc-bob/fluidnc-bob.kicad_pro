@@ -240,7 +240,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": ""
+      "sch_revision": "C"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -653,13 +653,18 @@
       {
         "filename": "fluidnc-bob.kicad_sch",
         "name": "fluidnc-bob",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "90005a82-a137-521e-8a64-2e75a611a04d"
       }
     ],
     "used_designators": "R16,#PWR1-2",
     "variants": []
   },
-  "sheets": [],
+  "sheets": [
+    [
+      "90005a82-a137-521e-8a64-2e75a611a04d",
+      "fluidnc-bob"
+    ]
+  ],
   "text_variables": {},
   "tuning_profiles": {
     "meta": {
