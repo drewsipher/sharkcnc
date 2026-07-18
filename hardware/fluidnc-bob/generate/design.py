@@ -139,9 +139,9 @@ add("J9", "PadS_06", "SD", "pads6",
      "5": P5V, "6": GND})
 
 # --- relay driver -------------------------------------------------------
-add("Q1", "Q_NMOS", "2N7000", "to92", {"1": GND, "2": "NGATE", "3": "RLY_N"})
-add("R40", "R", "1k", "r", {"1": "SPIN5", "2": "NGATE"})
-add("R41", "R", "100k", "r", {"1": "NGATE", "2": GND})
+add("Q1", "Q_NPN", "2N2222A", "to92", {"1": GND, "2": "NBASE", "3": "RLY_N"})  # E,B,C — VERIFY pinout variant with DMM
+add("R40", "R", "1k", "r", {"1": "SPIN5", "2": "NBASE"})
+add("R41", "R", "100k", "r", {"1": "NBASE", "2": GND})
 add("D1", "D_V", "GS1A", "sma", {"1": P5V, "2": "RLY_N"})  # flyback K=+5V
 add("J7", "PadS_R_02", "RELAY", "pads2", {"1": P5V, "2": "RLY_N"})
 

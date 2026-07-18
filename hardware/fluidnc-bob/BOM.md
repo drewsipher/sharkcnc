@@ -12,7 +12,7 @@
 | 6 | R30–R33, R40, R50 | 1 kΩ 0805 | series / gate / LED |
 | 6 | C2, C3, C20–C23 | 100 nF 0805 | |
 | 1 | C1 | 100 µF ≥16 V electrolytic THT, 2.5 mm | on hand |
-| 1 | Q1 | 2N7000 TO-92 | relay driver (≤200 mA coil) |
+| 1 | Q1 | 2N2222A TO-92 (or MMBT2222 SOT-23) | relay driver; **check E-B-C vs C-B-E pinout with DMM** |
 | 1 | F1 | Littelfuse 1210L150/16WR PTC polyfuse, 1210 (1.5 A hold) | self-resetting; D2 crowbar trips it on reverse polarity |
 | 1 | LED1 | 5 mm LED | power indicator |
 | — | J1–J11 | solder wire pads (on the PCB) | no connectors: wires solder in |

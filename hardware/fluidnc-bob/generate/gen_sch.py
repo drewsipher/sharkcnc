@@ -78,6 +78,14 @@ SYMS["Q_NMOS"] = dict(shapes=[line([(0, 2.54), (2.54, 2.54)]),
                       pins=[("1", "S", 2.54, -5.08, 90, 2.54),
                             ("2", "G", -5.08, 0, 0, 4.318),
                             ("3", "D", 2.54, 5.08, 270, 2.54)])
+SYMS["Q_NPN"] = dict(shapes=[line([(0, -2.286), (0, 2.286)]),      # base bar
+                             line([(0, 0.762), (2.54, 2.54)]),     # collector
+                             line([(0, -0.762), (2.54, -2.54)]),   # emitter
+                             line([(2.54, -2.54), (1.4, -2.36)]),  # arrow
+                             line([(2.54, -2.54), (2.16, -1.45)])],
+                     pins=[("1", "E", 2.54, -5.08, 90, 2.54),
+                           ("2", "B", -5.08, 0, 0, 5.08),
+                           ("3", "C", 2.54, 5.08, 270, 2.54)])
 # wire-pad strips: PadS_0N pins face LEFT (for right edge of sheet),
 # PadS_R_0N pins face RIGHT (for left edge of sheet)
 for n in (2, 3, 6):
@@ -429,7 +437,7 @@ def label_pos(ref, sym, X, Y):
         dr, dv = (X - 2.54, Y - 1.27, "r"), (X - 2.54, Y + 1.27, "r")
     elif sym in ("R_H", "Fuse_H", "D"):         # horizontal: above/below
         dr, dv = (X, Y - 2.54, "c"), (X, Y + 2.54, "c")
-    elif sym == "Q_NMOS":
+    elif sym in ("Q_NMOS", "Q_NPN"):
         dr, dv = (X + 5.08, Y - 1.27, "l"), (X + 5.08, Y + 1.27, "l")
     else:
         dr, dv = (X, Y - 6.35, "c"), (X, Y + 6.35, "c")
@@ -437,7 +445,7 @@ def label_pos(ref, sym, X, Y):
 
 # ------------------------------------------------------------- emission
 NO_PINNUM = {"R", "R_H", "C", "C_Pol", "D", "D_V", "LED_V", "Fuse_H",
-             "Polyfuse", "Q_NMOS"}
+             "Polyfuse", "Q_NMOS", "Q_NPN"}
 
 def emit_lib_symbols(prefix=True):
     out = []
