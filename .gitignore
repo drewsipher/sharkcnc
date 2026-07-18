@@ -1,0 +1,11 @@
+# KiCad session/backup/lock files
+*.kicad_prl
+*-backups/
+_autosave-*
+fp-info-cache
+*.lck
+~*.lck
+# generated intermediates (recreated by generate/ scripts)
+_netlist.net
+sch_uuids.json
+__pycache__/
