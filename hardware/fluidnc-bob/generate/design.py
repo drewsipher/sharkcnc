@@ -68,7 +68,7 @@ FP = {  # footprint lib:name shorthands
     "pads3": "fluidnc-bob:WirePads_1x03_P5.08mm",
     "pads6": "fluidnc-bob:WirePads_1x06_P5.08mm",
     "dip20": "Package_DIP:DIP-20_W7.62mm_Socket",
-    "to92":  "Package_TO_SOT_THT:TO-92_Inline",
+    "sot23": "Package_TO_SOT_SMD:SOT-23",
     "r":     "Resistor_SMD:R_0805_2012Metric",
     "c":     "Capacitor_SMD:C_0805_2012Metric",
     "cp":    "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm",
@@ -139,7 +139,8 @@ add("J9", "PadS_06", "SD", "pads6",
      "5": P5V, "6": GND})
 
 # --- relay driver -------------------------------------------------------
-add("Q1", "Q_NPN", "2N2222A", "to92", {"1": GND, "2": "NBASE", "3": "RLY_N"})  # E,B,C — VERIFY pinout variant with DMM
+add("Q1", "Q_NPN", "MMBT2222A", "sot23",
+    {"1": "NBASE", "2": GND, "3": "RLY_N"})  # SOT-23: 1=B, 2=E, 3=C
 add("R40", "R", "1k", "r", {"1": "SPIN5", "2": "NBASE"})
 add("R41", "R", "100k", "r", {"1": "NBASE", "2": GND})
 add("D1", "D_V", "GS1A", "sma", {"1": P5V, "2": "RLY_N"})  # flyback K=+5V
