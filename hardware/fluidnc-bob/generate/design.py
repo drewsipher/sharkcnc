@@ -73,7 +73,7 @@ FP = {  # footprint lib:name shorthands
     "c":     "Capacitor_SMD:C_0805_2012Metric",
     "cp":    "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm",
     "sma":   "Diode_SMD:D_SMA",
-    "fuse":  "Fuse:Fuse_Bourns_MF-RG300",
+    "fuse":  "Fuse:Fuse_Bourns_MF-RG300",  # unused: F1 is now generic wire pads
     "led":   "LED_THT:LED_D5.0mm",
     "socket": "fluidnc-bob:ESP32_S3_DevKit_44_Socket",
     "hole":  "MountingHole:MountingHole_3.2mm_M3_Pad",
@@ -147,7 +147,7 @@ add("J7", "PadS_R_02", "RELAY", "pads2", {"1": P5V, "2": "RLY_N"})
 
 # --- power entry --------------------------------------------------------
 add("J1", "PadS_R_02", "5V-IN", "pads2", {"1": "VIN5", "2": GND})
-add("F1", "Fuse_H", "MF-R110 1.1A", "fuse", {"1": "VIN5", "2": P5V})
+add("F1", "Fuse_H", "Fuse 1.5A fast", "pads2", {"1": "VIN5", "2": P5V})
 add("D2", "D_V", "GS1A", "sma", {"1": P5V, "2": GND})  # reverse crowbar K=+5V
 add("C1", "C_Pol", "100uF", "cp", {"1": P5V, "2": GND})
 add("C3", "C", "100nF", "c", {"1": P5V, "2": GND})
