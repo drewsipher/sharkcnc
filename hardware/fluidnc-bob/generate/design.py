@@ -135,8 +135,8 @@ for name, i in INPUTS:
 
 # --- microSD breakout wire pads (module has its own 3.3V reg + 4050) ----
 add("J9", "PadS_06", "SD", "pads6",
-    {"1": P5V, "2": "SD_SCK", "3": "SD_MISO", "4": "SD_MOSI",
-     "5": "SD_CS", "6": GND})
+    {"1": "SD_SCK", "2": "SD_MISO", "3": "SD_MOSI", "4": "SD_CS",
+     "5": P5V, "6": GND})
 
 # --- relay driver -------------------------------------------------------
 add("Q1", "Q_NMOS", "2N7000", "to92", {"1": GND, "2": "NGATE", "3": "RLY_N"})

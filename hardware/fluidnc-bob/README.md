@@ -40,7 +40,7 @@ power-net comparison). Unbuilt, rev C.
 | J10 / J11 | SIG, GND | Z limit / probe |
 | J7 | +5V, COIL− | spindle relay coil (2N7000 low side, D1 flyback) |
 | J8 | AUX, GND | spare buffered 5 V output |
-| J9 | 5V, SCK, MISO, MOSI, CS, GND | microSD breakout (feed it 5 V; its 4050 + 3.3 V reg handle the rest) |
+| J9 | SCK, MISO, MOSI, CS, 5V, GND | microSD breakout (feed it 5 V; its 4050 + 3.3 V reg handle the rest) |
 
 ## GPIO map (ESP32-S3)
 

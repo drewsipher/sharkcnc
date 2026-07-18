@@ -156,14 +156,14 @@ PL = {
     "LED1": (88.90, 114.30),
     # buffer VCC drop
     "D3": (176.53, 105.41), "C2": (152.40, 109.22),
-    # input conditioning channels at y = 165.10 + 20.32k
-    **{f"R3{k}": (279.40, 165.10 + 20.32 * k) for k in range(4)},
-    **{f"R2{k}": (287.02, 160.02 + 20.32 * k) for k in range(4)},
-    **{f"C2{k}": (292.10, 168.91 + 20.32 * k) for k in range(4)},
-    "J5": (304.80, 165.10), "J6": (304.80, 185.42),
-    "J10": (304.80, 205.74), "J11": (304.80, 226.06),
-    # SD pads
-    "J9": (340.36, 130.81),
+    # input conditioning channels, right of J9, at y = 152.40 + 20.32k
+    **{f"R3{k}": (330.20, 152.40 + 20.32 * k) for k in range(4)},
+    **{f"R2{k}": (337.82, 147.32 + 20.32 * k) for k in range(4)},
+    **{f"C2{k}": (342.90, 156.21 + 20.32 * k) for k in range(4)},
+    "J5": (355.60, 152.40), "J6": (355.60, 172.72),
+    "J10": (355.60, 193.04), "J11": (355.60, 213.36),
+    # SD pads, tucked under the devkit's SD pin cluster
+    "J9": (285.75, 149.86),
 }
 
 def pin_pos(ref, num):
@@ -182,6 +182,7 @@ W = []   # list of point-lists (polylines)
 JUNC = []  # explicit junction dots
 POWER = []  # (symname, x, y)
 FLAGS = []  # PWR_FLAG points
+LABELS = []  # (netname, x, y, angle) global labels
 
 def w(*pts):
     W.append([(round(x, 2), round(y, 2)) for x, y in pts])
@@ -196,6 +197,8 @@ def vbuf(x, y):
     POWER.append(("VCC_BUF", round(x, 2), round(y, 2)))
 def jd(x, y):
     JUNC.append((round(x, 2), round(y, 2)))
+def lbl(name, x, y, ang):
+    LABELS.append((name, round(x, 2), round(y, 2), ang))
 
 # --- devkit <-> buffer input bus (straight wires, pads 4..11 = A1..A8) ---
 for k in range(8):
@@ -242,27 +245,33 @@ jd(167.64, 105.41)
 FLAGS.append((170.18, 105.41))
 jd(170.18, 105.41)
 
-# --- U1 outputs -> pad groups (left) ------------------------------------
-# sources y: XSTEP 120.65 XDIR 123.19 YSTEP 125.73 YDIR 128.27
-#            ZSTEP 130.81 ZDIR 133.35 SPIN5 135.89 AUX1 138.43
+# --- U1 outputs -> pad groups: net labels both ends (no crossing lanes) --
+OUT_NETS = ["XSTEP", "XDIR", "YSTEP", "YDIR", "ZSTEP", "ZDIR",
+            "SPIN5", "AUX1"]
+
 def out_pin(k):  # Y1..Y8 = pins 18..11
     return P("U1", str(18 - k))
 
-w(out_pin(0), P("J2", "1"))                             # XSTEP straight
-w(out_pin(1), P("J2", "2"))                             # XDIR straight
-w(out_pin(2), (152.40, 125.73), (152.40, 133.35), P("J3", "1"))   # YSTEP
-w(out_pin(3), (149.86, 128.27), (149.86, 135.89), P("J3", "2"))   # YDIR
-w(out_pin(4), (147.32, 130.81), (147.32, 146.05), P("J4", "1"))   # ZSTEP
-w(out_pin(5), (144.78, 133.35), (144.78, 148.59), P("J4", "2"))   # ZDIR
-w(out_pin(7), (142.24, 138.43), (142.24, 158.75), P("J8", "1"))   # AUX1
+for k, net in enumerate(OUT_NETS):
+    src = out_pin(k)
+    w(src, (156.21, src[1]))
+    lbl(net, 156.21, src[1], 180)
+for ref, num, net in [("J2", "1", "XSTEP"), ("J2", "2", "XDIR"),
+                      ("J3", "1", "YSTEP"), ("J3", "2", "YDIR"),
+                      ("J4", "1", "ZSTEP"), ("J4", "2", "ZDIR"),
+                      ("J8", "1", "AUX1")]:
+    px, py = P(ref, num)
+    w((px, py), (125.73, py))
+    lbl(net, 125.73, py, 0)
 # pad-group GND stubs
 for ref, num in [("J2", "3"), ("J3", "3"), ("J4", "3"), ("J8", "2")]:
     px, py = P(ref, num)
     w((px, py), (124.46, py), (124.46, py + 2.54))
     gnd(124.46, py + 2.54)
 
-# --- relay block ---------------------------------------------------------
-w(out_pin(6), (154.94, 135.89), P("R40", "1"))          # SPIN5 down lane
+# --- relay block (fed via SPIN5 label) -----------------------------------
+w(P("R40", "1"), (157.48, 180.34))
+lbl("SPIN5", 157.48, 180.34, 0)
 ngate = P("R40", "2")                                   # (154.94, 190.5)
 w(ngate, P("Q1", "2"))
 w(ngate, P("R41", "1"))
@@ -322,40 +331,41 @@ jd(262.89, 166.37)
 w((262.89, 166.37), (262.89, 168.91))
 gnd(262.89, 168.91)
 
-# --- input conditioning (right side) -------------------------------------
-# devkit pins: LIMX 26 / LIMY 27 / LIMZ 28 / PROBE 29
-lanes = {0: 264.16, 1: 266.70, 2: 269.24, 3: 271.78}
+# --- input conditioning (far right, past J9) -----------------------------
+# devkit pins LIMX 26 / LIMY 27 / LIMZ 28 / PROBE 29 run east ABOVE J9,
+# then fan down lanes ordered rightmost-first => zero crossings.
+lanes = {0: 320.04, 1: 317.50, 2: 314.96, 3: 312.42}
 for k, pin in enumerate(["26", "27", "28", "29"]):
     dk = P("A1", pin)
-    ch_y = 165.10 + 20.32 * k
+    ch_y = 152.40 + 20.32 * k
     w(dk, (lanes[k], dk[1]), (lanes[k], ch_y), P(f"R3{k}", "2"))
-    node = (287.02, ch_y)
-    w(P(f"R3{k}", "1"), node, (297.18, ch_y))
+    node = (337.82, ch_y)
+    w(P(f"R3{k}", "1"), node, (347.98, ch_y))
     jd(*node)
     # pullup up to +3V3 (R2 pin2 is at the node, pin1 on top)
     r2_top = P(f"R2{k}", "1")
-    w(r2_top, (287.02, ch_y - 12.70))
-    p33(287.02, ch_y - 12.70)
-    # filter cap below the wire at x 292.10
-    c_top = P(f"C2{k}", "1")   # (292.10, ch_y)
+    w(r2_top, (337.82, ch_y - 12.70))
+    p33(337.82, ch_y - 12.70)
+    # filter cap below the wire at x 342.90
+    c_top = P(f"C2{k}", "1")   # (342.90, ch_y)
     jd(*c_top)
-    w(P(f"C2{k}", "2"), (292.10, ch_y + 10.16))
-    gnd(292.10, ch_y + 10.16)
+    w(P(f"C2{k}", "2"), (342.90, ch_y + 10.16))
+    gnd(342.90, ch_y + 10.16)
 
 for k, ref in enumerate(["J5", "J6", "J10", "J11"]):
     gpin = P(ref, "2")
-    w(gpin, (294.64, gpin[1]), (294.64, gpin[1] + 2.54))
-    gnd(294.64, gpin[1] + 2.54)
+    w(gpin, (345.44, gpin[1]), (345.44, gpin[1] + 2.54))
+    gnd(345.44, gpin[1] + 2.54)
 
-# --- SD pads -------------------------------------------------------------
-w(P("J9", "1"), (330.20, 130.81), (330.20, 125.73))
-p5(330.20, 125.73)
-w(P("A1", "30"), (327.66, 130.81), (327.66, 133.35), P("J9", "2"))   # SCK
-w(P("A1", "31"), (325.12, 133.35), (325.12, 135.89), P("J9", "3"))   # MISO
-w(P("A1", "32"), (322.58, 135.89), (322.58, 138.43), P("J9", "4"))   # MOSI
-w(P("A1", "40"), (320.04, 156.21), (320.04, 140.97), P("J9", "5"))   # CS
-w(P("J9", "6"), (330.20, 143.51), (330.20, 146.05))
-gnd(330.20, 146.05)
+# --- SD pads: straight drops from the devkit's SD pin cluster ------------
+w(P("A1", "30"), (269.24, 130.81), (269.24, 149.86), P("J9", "1"))   # SCK
+w(P("A1", "31"), (266.70, 133.35), (266.70, 152.40), P("J9", "2"))   # MISO
+w(P("A1", "32"), (264.16, 135.89), (264.16, 154.94), P("J9", "3"))   # MOSI
+w(P("A1", "40"), (274.32, 156.21), (274.32, 157.48), P("J9", "4"))   # CS
+w(P("J9", "5"), (275.59, 160.02), (275.59, 158.75))                  # 5V
+p5(275.59, 158.75)
+w(P("J9", "6"), (273.05, 162.56), (273.05, 165.10))                  # GND
+gnd(273.05, 165.10)
 
 # ------------------------------------------------------- self-check
 attach_pts = set()
@@ -551,6 +561,13 @@ for x, y in JUNC:
 for txt, x, y in TEXTS:
     body.append(f'  (text "{txt}" (exclude_from_sim no) (at {x} {y} 0) '
                 f'(effects (font (size 1.27 1.27))) (uuid "{U()}"))')
+for name, x, y, ang in LABELS:
+    just = "right" if ang == 180 else "left"
+    body.append(
+        f'  (global_label "{name}" (shape passive) (at {x} {y} {ang}) '
+        f'(effects (font (size 1.27 1.27)) (justify {just})) (uuid "{U()}") '
+        f'(property "Intersheetrefs" "${{INTERSHEET_REFS}}" (at {x} {y} 0) '
+        f'(effects (font (size 1.27 1.27)) hide)))')
 
 doc = f'''(kicad_sch (version 20231120) (generator "gen_sch.py")
   (uuid "{ROOT_UUID}")
