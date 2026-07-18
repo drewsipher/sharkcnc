@@ -110,26 +110,32 @@ SYMS["ESP32_S3_DevKit_44"] = dict(
          [(str(p), nm, 22.86, 26.67 - 2.54 * (p - 23), 180, 5.08)
           for p, nm, _ in DEVKIT_RIGHT])
 
-# power symbols: hidden power_in pin at origin named per net
-def power_sym(name, shapes):
-    SYMS[name] = dict(shapes=shapes, power=True,
-                      pins=[("1", name, 0, 0, 90, 0)])
-power_sym("GND", [line([(-1.27, -0.635), (1.27, -0.635)]),
-                  line([(-0.762, -1.143), (0.762, -1.143)]),
-                  line([(-0.254, -1.651), (0.254, -1.651)]),
-                  line([(0, 0), (0, -0.635)])])
-power_sym("+5V", [line([(0, 0), (0, 1.27)]),
-                  line([(-0.762, 1.27), (0, 2.54), (0.762, 1.27), (-0.762, 1.27)])])
-power_sym("+3V3", [line([(0, 0), (0, 1.27)]),
-                   line([(-0.762, 1.27), (0, 2.54), (0.762, 1.27), (-0.762, 1.27)])])
-power_sym("VCC_BUF", [line([(0, 0), (0, 1.524)]),
-                      line([(-1.016, 1.524), (1.016, 1.524)])])
-SYMS["PWR_FLAG"] = dict(shapes=[line([(0, 0), (0, 1.27)]),
-                                line([(0, 1.27), (-1.016, 1.905), (0, 2.54),
-                                      (1.016, 1.905), (0, 1.27)])],
-                        power=True,
-                        pins=[("1", "pwr", 0, 0, 90, 0)],
-                        power_out=True)
+# power symbols: GND/+5V/+3V3/PWR_FLAG come verbatim from KiCad's official
+# power library; only VCC_BUF (project-specific rail) stays custom.
+SYMS["VCC_BUF"] = dict(shapes=[line([(0, 0), (0, 1.524)]),
+                               line([(-1.016, 1.524), (1.016, 1.524)])],
+                       power=True,
+                       pins=[("1", "VCC_BUF", 0, 0, 90, 0)])
+
+def official_power_symbol(name):
+    """Extract a symbol block verbatim from KiCad's power library."""
+    txt = open("/usr/share/kicad/symbols/power.kicad_sym").read()
+    key = f'(symbol "{name}"'
+    i = txt.index(key)
+    depth, j = 0, i
+    while True:
+        if txt[j] == '(':
+            depth += 1
+        elif txt[j] == ')':
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    block = txt[i:j + 1]
+    return block.replace(key, f'(symbol "power:{name}"', 1)
+
+OFFICIAL_POWER = {n: official_power_symbol(n)
+                  for n in ("GND", "+5V", "+3V3", "PWR_FLAG")}
 
 # ------------------------------------------------------------- placement
 # ref -> (x, y).  All hand-planned; see coordinate ledger in comments.
@@ -384,42 +390,40 @@ if missing:
     sys.exit(1)
 
 # ---------------------------------------------------- label positioning
-# Hand-tuned reference/value text positions where defaults collide.
+# Family defaults keep ref/value snug beside each symbol; overrides where
+# geometry demands. Entries: (x, y) or (x, y, justify).
 LEFT_PADS = {"J1", "J2", "J3", "J4", "J7", "J8"}
 RIGHT_PADS = {"J5", "J6", "J10", "J11", "J9"}
 REF_POS, VAL_POS, VAL_HIDE = {}, {}, set()
 REF_POS["A1"] = (238.76, 106.68); VAL_POS["A1"] = (238.76, 172.72)
-REF_POS["U1"] = (163.83, 110.49); VAL_POS["U1"] = (172.72, 165.10)
-REF_POS["Q1"] = (170.18, 187.96); VAL_POS["Q1"] = (170.18, 190.50)
-REF_POS["R40"] = (151.13, 182.88); VAL_POS["R40"] = (151.13, 185.42)
-REF_POS["R41"] = (151.13, 193.04); VAL_POS["R41"] = (151.13, 195.58)
-REF_POS["D1"] = (141.61, 170.18); VAL_POS["D1"] = (141.61, 172.72)
-REF_POS["LED1"] = (93.98, 111.76); VAL_POS["LED1"] = (93.98, 114.30)
-REF_POS["R50"] = (92.71, 99.06); VAL_POS["R50"] = (92.71, 104.14)
+REF_POS["U1"] = (163.83, 110.49); VAL_POS["U1"] = (172.72, 152.40)
 for k in range(8):  # pulldowns: staggered refs, values replaced by one note
     x = 187.96 + 3.81 * k
     REF_POS[f"R1{k}"] = (x, 146.05 if k % 2 == 0 else 143.51)
     VAL_HIDE.add(f"R1{k}")
-for k in range(4):
-    ch = 165.10 + 20.32 * k
-    REF_POS[f"R2{k}"] = (292.10, ch - 6.35)
-    VAL_POS[f"R2{k}"] = (292.10, ch - 3.81)
-    REF_POS[f"C2{k}"] = (297.18, ch + 2.54)
-    VAL_POS[f"C2{k}"] = (297.18, ch + 5.08)
-    REF_POS[f"R3{k}"] = (279.40, ch - 3.81)
-    VAL_POS[f"R3{k}"] = (279.40, ch + 3.81)
 TEXTS = [("R10-R17: 100k", 201.93, 167.64)]
 
-def label_pos(ref, X, Y, ref_dx):
-    rp = REF_POS.get(ref)
-    vp = VAL_POS.get(ref)
-    if ref in LEFT_PADS:
-        rp = rp or (X - 7.62, Y - 1.27)
-        vp = vp or (X - 7.62, Y + 1.27)
-    if ref in RIGHT_PADS:
-        rp = rp or (X + 7.62, Y - 1.27)
-        vp = vp or (X + 7.62, Y + 1.27)
-    return (rp or (X + ref_dx, Y - 6.35)), (vp or (X + ref_dx, Y + 6.35))
+def label_pos(ref, sym, X, Y):
+    """-> ((rx, ry, rjust), (vx, vy, vjust)) placed tight to the body."""
+    def norm(p, dflt):
+        p = p or dflt
+        return p if len(p) == 3 else (p[0], p[1], "c")
+    rp, vp = REF_POS.get(ref), VAL_POS.get(ref)
+    if ref in LEFT_PADS:      # body left of pins: labels just left of body
+        dr, dv = (X - 5.08, Y - 1.27, "r"), (X - 5.08, Y + 1.27, "r")
+    elif ref in RIGHT_PADS:   # labels just right of body
+        dr, dv = (X + 5.08, Y - 1.27, "l"), (X + 5.08, Y + 1.27, "l")
+    elif sym in ("R", "C", "C_Pol", "D_V"):     # vertical two-pin: right side
+        dr, dv = (X + 1.905, Y - 1.27, "l"), (X + 1.905, Y + 1.27, "l")
+    elif sym == "LED_V":                        # arrows on right: go left
+        dr, dv = (X - 2.54, Y - 1.27, "r"), (X - 2.54, Y + 1.27, "r")
+    elif sym in ("R_H", "Fuse_H", "D"):         # horizontal: above/below
+        dr, dv = (X, Y - 2.54, "c"), (X, Y + 2.54, "c")
+    elif sym == "Q_NMOS":
+        dr, dv = (X + 5.08, Y - 1.27, "l"), (X + 5.08, Y + 1.27, "l")
+    else:
+        dr, dv = (X, Y - 6.35, "c"), (X, Y + 6.35, "c")
+    return norm(rp, dr), norm(vp, dv)
 
 # ------------------------------------------------------------- emission
 NO_PINNUM = {"R", "R_H", "C", "C_Pol", "D", "D_V", "LED_V", "Fuse_H",
@@ -475,13 +479,13 @@ for ref, c in COMPONENTS.items():
     body.append(f'  (symbol (lib_id "bob:{c["sym"]}") (at {X} {Y} 0) '
                 '(unit 1) (exclude_from_sim no) (in_bom yes) '
                 f'(on_board yes) (dnp no) (uuid "{iu}")')
-    ref_dx = 2.54 if c["sym"].startswith(("R", "C", "D", "LED", "Fuse")) else 0
-    (rx, ry), (vx, vy) = label_pos(ref, X, Y, ref_dx)
+    (rx, ry, rj), (vx, vy, vj) = label_pos(ref, c["sym"], X, Y)
+    JUST = {"l": " (justify left)", "r": " (justify right)", "c": ""}
     vhide = ' hide' if ref in VAL_HIDE else ''
     body.append(f'    (property "Reference" "{ref}" (at {rx} {ry} 0) '
-                '(effects (font (size 1.27 1.27))))')
+                f'(effects (font (size 1.27 1.27)){JUST[rj]}))')
     body.append(f'    (property "Value" "{c["value"]}" (at {vx} {vy} 0) '
-                f'(effects (font (size 1.27 1.27)){vhide}))')
+                f'(effects (font (size 1.27 1.27)){JUST[vj]}{vhide}))')
     body.append(f'    (property "Footprint" "{c["fp"]}" (at {X} {Y} 0) '
                 '(effects (font (size 1.27 1.27)) hide))')
     body.append(f'    (property "Datasheet" "" (at {X} {Y} 0) '
@@ -500,12 +504,14 @@ for ref, c in COMPONENTS.items():
 pwr_n = 0
 for name, x, y in POWER:
     pwr_n += 1
-    body.append(f'  (symbol (lib_id "bob:{name}") (at {x} {y} 0) (unit 1) '
+    lib = "bob:VCC_BUF" if name == "VCC_BUF" else f"power:{name}"
+    vy = y + 5.08 if name == "GND" else y - 5.08  # value beyond the graphic
+    body.append(f'  (symbol (lib_id "{lib}") (at {x} {y} 0) (unit 1) '
                 '(exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) '
                 f'(uuid "{U()}")')
     body.append(f'    (property "Reference" "#PWR{pwr_n:03d}" (at {x} {y} 0) '
                 '(effects (font (size 1.27 1.27)) hide))')
-    body.append(f'    (property "Value" "{name}" (at {x} {y + 5.08} 0) '
+    body.append(f'    (property "Value" "{name}" (at {x} {vy} 0) '
                 '(effects (font (size 1.02 1.02))))')
     body.append(f'    (property "Footprint" "" (at {x} {y} 0) '
                 '(effects (font (size 1.27 1.27)) hide))')
@@ -517,12 +523,12 @@ for name, x, y in POWER:
     body.append("  )")
 for x, y in FLAGS:
     pwr_n += 1
-    body.append(f'  (symbol (lib_id "bob:PWR_FLAG") (at {x} {y} 0) (unit 1) '
+    body.append(f'  (symbol (lib_id "power:PWR_FLAG") (at {x} {y} 0) (unit 1) '
                 '(exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) '
                 f'(uuid "{U()}")')
     body.append(f'    (property "Reference" "#FLG{pwr_n:03d}" (at {x} {y} 0) '
                 '(effects (font (size 1.27 1.27)) hide))')
-    body.append(f'    (property "Value" "PWR_FLAG" (at {x} {y + 5.08} 0) '
+    body.append(f'    (property "Value" "PWR_FLAG" (at {x} {y - 5.08} 0) '
                 '(effects (font (size 1.02 1.02)) hide))')
     body.append(f'    (property "Footprint" "" (at {x} {y} 0) '
                 '(effects (font (size 1.27 1.27)) hide))')
@@ -553,6 +559,8 @@ doc = f'''(kicad_sch (version 20231120) (generator "gen_sch.py")
     (date "2026-07-18") (rev "C") (company "SharkCNC"))
   (lib_symbols
 {emit_lib_symbols()}
+{chr(10).join('    ' + OFFICIAL_POWER[n].replace(chr(10), chr(10) + '    ')
+              for n in OFFICIAL_POWER)}
   )
 {chr(10).join(body)}
   (sheet_instances (path "/" (page "1")))
