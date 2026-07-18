@@ -32,7 +32,7 @@ power-net comparison). Unbuilt, rev C.
 
 | Ref | Pads (1 = square) | Goes to |
 |---|---|---|
-| J1 | 5V, GND | 5 V PSU (through F1 fuse, D2 reverse crowbar) |
+| J1 | 5V, GND | 5 V PSU (through F1 polyfuse, D2 reverse crowbar) |
 | J2 | STEP, DIR, GND | X driver: SP+, DIR+; GND wire bridges SP−+DIR− |
 | J3 | STEP, DIR, GND | Y driver |
 | J4 | STEP, DIR, GND | Z driver |
