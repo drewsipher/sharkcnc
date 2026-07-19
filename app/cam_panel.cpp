@@ -21,6 +21,7 @@
 #include "cam/facing.h"
 #include "cam/gerber.h"
 #include "cam/isolation.h"
+#include "cam/outline.h"
 #include "tool_library.h"
 
 using namespace scnc;
@@ -30,6 +31,7 @@ CamPanel::CamPanel(QWidget* parent) : QWidget(parent) {
     tabs_->addTab(buildIsoTab(), "Copper (isolation)");
     tabs_->addTab(buildDrillTab(), "Drill");
     tabs_->addTab(buildFaceTab(), "Face");
+    tabs_->addTab(buildOutlineTab(), "Outline");
     auto* lay = new QVBoxLayout(this);
     lay->setContentsMargins(4, 4, 4, 4);
     lay->addWidget(tabs_);
@@ -299,6 +301,113 @@ QWidget* CamPanel::buildFaceTab() {
     });
     regenFace();
     return w;
+}
+
+QWidget* CamPanel::buildOutlineTab() {
+    auto* w = new QWidget;
+    auto* lay = new QVBoxLayout(w);
+    auto* form = new QFormLayout;
+    auto mkD = [&](double v, double lo, double hi, double step) {
+        auto* s = new QDoubleSpinBox;
+        s->setRange(lo, hi);
+        s->setDecimals(2);
+        s->setSingleStep(step);
+        s->setValue(v);
+        return s;
+    };
+    outX_ = mkD(0, -1000, 1000, 1);
+    outY_ = mkD(0, -1000, 1000, 1);
+    outW_ = mkD(50, 1, 1000, 1);
+    outH_ = mkD(50, 1, 1000, 1);
+    outTool_ = mkD(1.0, 0.1, 10, 0.1);
+    outDepth_ = mkD(-1.8, -30, 0, 0.1);
+    outPass_ = mkD(0.4, 0.05, 10, 0.05);
+    outFeed_ = mkD(300, 1, 3000, 10);
+    outPlunge_ = mkD(120, 1, 1000, 10);
+    outTabW_ = mkD(3.0, 0.5, 20, 0.5);
+    outTabH_ = mkD(0.5, 0.1, 5, 0.1);
+    outRpm_ = new QSpinBox;
+    outRpm_->setRange(0, 60000);
+    outRpm_->setValue(12000);
+    outTabs_ = new QSpinBox;
+    outTabs_->setRange(0, 24);
+    outTabs_->setValue(4);
+    outInside_ = new QCheckBox("Cut inside the line (slot / inner cut-out)");
+
+    auto* xyRow = new QHBoxLayout;
+    xyRow->addWidget(new QLabel("X0"));
+    xyRow->addWidget(outX_);
+    xyRow->addWidget(new QLabel("Y0"));
+    xyRow->addWidget(outY_);
+    auto* whRow = new QHBoxLayout;
+    whRow->addWidget(new QLabel("W"));
+    whRow->addWidget(outW_);
+    whRow->addWidget(new QLabel("H"));
+    whRow->addWidget(outH_);
+    form->addRow("Origin", xyRow);
+    form->addRow("Size mm", whRow);
+    form->addRow("Tool Ø mm", outTool_);
+    form->addRow("Cut depth mm", outDepth_);
+    form->addRow("Per pass mm", outPass_);
+    form->addRow("Feed mm/min", outFeed_);
+    form->addRow("Plunge mm/min", outPlunge_);
+    form->addRow("Tabs", outTabs_);
+    form->addRow("Tab width mm", outTabW_);
+    form->addRow("Tab height mm", outTabH_);
+    form->addRow("Spindle RPM", outRpm_);
+    form->addRow(outInside_);
+    lay->addLayout(form);
+
+    outSummary_ = new QLabel("Set the board size to cut out.");
+    outSummary_->setWordWrap(true);
+    lay->addWidget(outSummary_);
+    auto* btnRow = new QHBoxLayout;
+    outSendBtn_ = new QPushButton("Load into sender");
+    btnRow->addStretch(1);
+    btnRow->addWidget(outSendBtn_);
+    lay->addLayout(btnRow);
+    lay->addStretch(1);
+
+    for (auto* s : {outX_, outY_, outW_, outH_, outTool_, outDepth_, outPass_,
+                    outFeed_, outPlunge_, outTabW_, outTabH_})
+        connect(s, &QDoubleSpinBox::valueChanged, this, &CamPanel::regenOutline);
+    connect(outRpm_, &QSpinBox::valueChanged, this, &CamPanel::regenOutline);
+    connect(outTabs_, &QSpinBox::valueChanged, this, &CamPanel::regenOutline);
+    connect(outInside_, &QCheckBox::toggled, this, &CamPanel::regenOutline);
+    connect(outSendBtn_, &QPushButton::clicked, this, [this] {
+        if (!outGcode_.isEmpty()) emit sendToJob(outGcode_, "outline");
+    });
+    regenOutline();
+    return w;
+}
+
+void CamPanel::regenOutline() {
+    scnc::OutlineOptions o;
+    o.toolDiameter = outTool_->value();
+    o.cutZ = outDepth_->value();
+    o.depthPerPass = outPass_->value();
+    o.feed = outFeed_->value();
+    o.plunge = outPlunge_->value();
+    o.spindleRpm = outRpm_->value();
+    o.tabs = outTabs_->value();
+    o.tabWidth = outTabW_->value();
+    o.tabHeight = outTabH_->value();
+    o.outside = !outInside_->isChecked();
+    auto rect = scnc::rectBoundary(outX_->value(), outY_->value(),
+                                   outW_->value(), outH_->value());
+    auto r = scnc::outlineRoutine(rect, o);
+    if (!r.ok) {
+        outSummary_->setText("Error: " + QString::fromStdString(r.error));
+        outGcode_.clear();
+        outSendBtn_->setEnabled(false);
+        return;
+    }
+    outGcode_ = QString::fromStdString(r.gcode);
+    outSendBtn_->setEnabled(true);
+    outSummary_->setText(QString("%1 pass(es), %2 tabs")
+                             .arg(r.passes)
+                             .arg(o.tabs));
+    emit previewReady(Clipper2Lib::PathsD{}, outGcode_, "outline");
 }
 
 void CamPanel::setFacingArea(double x0, double y0, double ww, double hh) {

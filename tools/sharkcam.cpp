@@ -12,6 +12,7 @@
 #include "cam/facing.h"
 #include "cam/gerber.h"
 #include "cam/isolation.h"
+#include "cam/outline.h"
 
 using namespace scnc;
 
@@ -71,6 +72,11 @@ int usage() {
         "      --pass-depth <mm=0.2> --feed <mm/min=800> --plunge <mm/min=300>\n"
         "      --travel <mm=3> --rpm <n=12000> --spiral\n"
         "\n"
+        "  sharkcam outline -o <out.nc>   (rectangular board cut-out w/ tabs)\n"
+        "      --w <mm> --h <mm> --x0 <mm> --y0 <mm> --tool <mm=1>\n"
+        "      --depth <mm=-1.8> --pass-depth <mm=0.4> --tabs <n=4>\n"
+        "      --tab-width <mm=3> --tab-height <mm=0.5> --inside\n"
+        "\n"
         "  sharkcam info <file.gbr | file.drl>\n");
     return 2;
 }
@@ -106,6 +112,33 @@ int main(int argc, char** argv) {
         if (!writeFile(outPath, r.gcode)) return 1;
         std::printf("%d pass(es), %.0f mm of cutting -> %s\n", r.passes,
                     r.lengthMm, outPath);
+        return 0;
+    }
+
+    if (cmd == "outline") {  // parametric rectangle boundary
+        const char* outPath = argS(argc, argv, "-o", nullptr);
+        if (!outPath) return usage();
+        double x0 = argD(argc, argv, "--x0", 0), y0 = argD(argc, argv, "--y0", 0);
+        double w = argD(argc, argv, "--w", 50), h = argD(argc, argv, "--h", 50);
+        OutlineOptions opt;
+        opt.toolDiameter = argD(argc, argv, "--tool", opt.toolDiameter);
+        opt.cutZ = argD(argc, argv, "--depth", opt.cutZ);
+        opt.depthPerPass = argD(argc, argv, "--pass-depth", opt.depthPerPass);
+        opt.travelZ = argD(argc, argv, "--travel", opt.travelZ);
+        opt.feed = argD(argc, argv, "--feed", opt.feed);
+        opt.plunge = argD(argc, argv, "--plunge", opt.plunge);
+        opt.spindleRpm = argI(argc, argv, "--rpm", opt.spindleRpm);
+        opt.tabs = argI(argc, argv, "--tabs", opt.tabs);
+        opt.tabWidth = argD(argc, argv, "--tab-width", opt.tabWidth);
+        opt.tabHeight = argD(argc, argv, "--tab-height", opt.tabHeight);
+        opt.outside = !argB(argc, argv, "--inside");
+        auto r = outlineRoutine(rectBoundary(x0, y0, w, h), opt);
+        if (!r.ok) {
+            std::fprintf(stderr, "outline error: %s\n", r.error.c_str());
+            return 1;
+        }
+        if (!writeFile(outPath, r.gcode)) return 1;
+        std::printf("%d pass(es), %d tabs -> %s\n", r.passes, opt.tabs, outPath);
         return 0;
     }
 

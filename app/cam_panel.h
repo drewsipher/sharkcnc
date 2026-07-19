@@ -41,11 +41,13 @@ private slots:
     void regenIso();
     void regenDrill();
     void regenFace();
+    void regenOutline();
 
 private:
     QWidget* buildIsoTab();
     QWidget* buildDrillTab();
     QWidget* buildFaceTab();
+    QWidget* buildOutlineTab();
 
     QTabWidget* tabs_;
 
@@ -83,4 +85,13 @@ private:
     QLabel* faceSummary_;
     QPushButton* faceSendBtn_;
     QString faceGcode_;
+
+    // outline
+    QDoubleSpinBox *outX_, *outY_, *outW_, *outH_, *outTool_, *outDepth_,
+        *outPass_, *outFeed_, *outPlunge_, *outTabW_, *outTabH_;
+    QSpinBox *outRpm_, *outTabs_;
+    QCheckBox* outInside_;
+    QLabel* outSummary_;
+    QPushButton* outSendBtn_;
+    QString outGcode_;
 };

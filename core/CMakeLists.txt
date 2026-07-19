@@ -10,6 +10,7 @@ add_library(scnc_core STATIC
   cam/excellon.cpp
   cam/isolation.cpp
   cam/facing.cpp
+  cam/outline.cpp
   cam/gcode_out.cpp
   cam/tool.cpp
 )

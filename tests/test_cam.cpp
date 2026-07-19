@@ -283,3 +283,37 @@ TEST_CASE("facing rejects nonsense") {
     o = FacingOptions{}; o.toolDiameter = 0;
     CHECK_FALSE(facingRoutine(o).ok);
 }
+
+// --- board outline with tabs --------------------------------------------
+#include "cam/outline.h"
+
+TEST_CASE("outline cuts through with tab lifts") {
+    auto rect = rectBoundary(0, 0, 30, 20);
+    OutlineOptions o;
+    o.toolDiameter = 1.0;
+    o.cutZ = -1.8; o.depthPerPass = 0.6;  // 3 passes
+    o.tabs = 4; o.tabWidth = 3; o.tabHeight = 0.5;
+    auto r = outlineRoutine(rect, o);
+    REQUIRE(r.ok);
+    CHECK(r.passes == 3);
+    auto prog = parseGcode(r.gcode);
+    REQUIRE(prog.hasBounds());
+    // deepest Z reaches the full cut depth somewhere
+    CHECK(prog.min.z == Approx(-1.8));
+    // the tool cuts OUTSIDE the board: min X below 0 by ~radius
+    CHECK(prog.min.x < 0);
+    CHECK(prog.max.x > 30);
+    // tabs mean some cutting points sit at the tab-top Z (-1.3) on the
+    // deepest pass -> that Z value appears in the program
+    CHECK(r.gcode.find("Z-1.3") != std::string::npos);
+}
+
+TEST_CASE("outline with no tabs is a clean loop") {
+    auto rect = rectBoundary(0, 0, 20, 20);
+    OutlineOptions o;
+    o.tabs = 0; o.cutZ = -1.0; o.depthPerPass = 1.0;
+    auto r = outlineRoutine(rect, o);
+    REQUIRE(r.ok);
+    CHECK(r.gcode.find("Z-1.3") == std::string::npos);
+    CHECK(r.toolpaths.size() == 1);
+}
