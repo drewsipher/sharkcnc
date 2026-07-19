@@ -24,6 +24,7 @@ protected:
     void wheelEvent(QWheelEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
+    void mouseDoubleClickEvent(QMouseEvent*) override;
     void resizeEvent(QResizeEvent*) override;
 
 private:

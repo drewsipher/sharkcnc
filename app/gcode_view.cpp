@@ -156,6 +156,13 @@ void GcodeView::paintEvent(QPaintEvent*) {
     for (const auto& poly : cuts_) p.drawPolyline(poly);
     p.restore();
 
+    // work origin marker
+    QPointF org = toScreen(0, 0);
+    p.setPen(QPen(QColor(230, 200, 90), 1.5));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(org, 5, 5);
+    p.drawText(org + QPointF(8, -6), "0,0");
+
     if (haveTool_) {
         QPointF t = toScreen(toolX_, -toolY_);
         p.setPen(QPen(QColor(255, 80, 80), 2));
@@ -164,12 +171,29 @@ void GcodeView::paintEvent(QPaintEvent*) {
         p.drawEllipse(t, 4, 4);
     }
 
-    p.setPen(QColor(150, 150, 150));
+    // scale bar (round to a nice 1/2/5 x 10^n length)
+    double targetPx = 80;
+    double mm = targetPx / scale_;
+    double mag = std::pow(10, std::floor(std::log10(mm)));
+    double norm = mm / mag;
+    double nice = norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10;
+    double barMm = nice * mag;
+    double barPx = barMm * scale_;
+    double bx = width() - barPx - 14, by = height() - 16;
+    p.setPen(QPen(QColor(170, 174, 178), 2));
+    p.drawLine(QPointF(bx, by), QPointF(bx + barPx, by));
+    p.drawLine(QPointF(bx, by - 4), QPointF(bx, by + 4));
+    p.drawLine(QPointF(bx + barPx, by - 4), QPointF(bx + barPx, by + 4));
+    p.drawText(QRectF(bx, by - 20, barPx, 16), Qt::AlignCenter,
+               QString("%1 mm").arg(barMm, 0, 'g', 3));
+
+    p.setPen(QColor(120, 124, 128));
     p.drawText(8, height() - 8,
-               QString("%1 mm/px  |  %2 segments")
-                   .arg(1.0 / scale_, 0, 'f', 2)
+               QString("%1 segments   ·   double-click or F to fit")
                    .arg(prog_.segments.size()));
 }
+
+void GcodeView::mouseDoubleClickEvent(QMouseEvent*) { fit(); }
 
 void GcodeView::wheelEvent(QWheelEvent* e) {
     double f = e->angleDelta().y() > 0 ? 1.2 : 1 / 1.2;

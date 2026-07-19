@@ -36,12 +36,20 @@ private slots:
     void heightMapWizard();
     void zTouchOff();
 
+protected:
+    void keyReleaseEvent(QKeyEvent* e) override;
+
 private:
     void loadProgramText(const QString& text, const QString& title);
     void appendConsole(const QString& line, bool sent);
     QWidget* buildSidePanel();
-    double jogStep() const;
+    QWidget* buildConnectionBox();
+    QWidget* buildDroBox();
+    QWidget* buildJogBox();
+    QWidget* buildJobBox();
+    void setStep(double mm);
     double jogFeed() const;
+    void jogAxis(const QString& axes);   // keyboard/held jog helper
 
     MachineClient* mc_;
     GcodeView* view_;
@@ -49,15 +57,31 @@ private:
     scnc::Program program_;
     QString programText_;
 
-    // side panel widgets
-    QComboBox *connType_, *stepCombo_;
+    // connection
+    QComboBox* connType_;
     QLineEdit *hostEdit_, *deviceEdit_;
     QSpinBox *portSpin_, *baudSpin_;
+    QWidget *netRow_, *serialRow_;
     QPushButton* connectBtn_;
-    QLabel *stateLabel_, *wposLabel_, *mposLabel_, *feedLabel_;
+
+    // DRO
+    QLabel* stateLabel_;
+    QLabel* work_[3];
+    QLabel* mach_[3];
+    QLabel* feedLabel_;
+    QPushButton* unlockBtn_;
+
+    // jog
+    double curStep_ = 1.0;
+    QList<QPushButton*> stepBtns_;
     QDoubleSpinBox* jogFeedSpin_;
+    bool jogging_ = false;
+    bool jogHeld_ = false;
+
+    // job
     QPushButton *runBtn_, *holdBtn_, *stopBtn_;
     QProgressBar* jobBar_;
+
     QPlainTextEdit* console_;
     QLineEdit* cmdEdit_;
 };

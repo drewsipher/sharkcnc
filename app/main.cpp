@@ -1,13 +1,56 @@
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QStyleFactory>
 #include <QTimer>
 
 #include "main_window.h"
+
+static void applyDarkTheme(QApplication& app) {
+    app.setStyle(QStyleFactory::create("Fusion"));
+    QPalette p;
+    const QColor bg(32, 34, 37), base(24, 26, 28), text(220, 222, 224),
+        alt(40, 43, 47), accent(0, 150, 214), disabled(120, 122, 124);
+    p.setColor(QPalette::Window, bg);
+    p.setColor(QPalette::WindowText, text);
+    p.setColor(QPalette::Base, base);
+    p.setColor(QPalette::AlternateBase, alt);
+    p.setColor(QPalette::ToolTipBase, base);
+    p.setColor(QPalette::ToolTipText, text);
+    p.setColor(QPalette::Text, text);
+    p.setColor(QPalette::Button, alt);
+    p.setColor(QPalette::ButtonText, text);
+    p.setColor(QPalette::BrightText, QColor(255, 90, 90));
+    p.setColor(QPalette::Link, accent);
+    p.setColor(QPalette::Highlight, accent);
+    p.setColor(QPalette::HighlightedText, Qt::black);
+    p.setColor(QPalette::Disabled, QPalette::Text, disabled);
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
+    p.setColor(QPalette::Disabled, QPalette::WindowText, disabled);
+    app.setPalette(p);
+    app.setStyleSheet(
+        "QGroupBox{border:1px solid #3a3d42;border-radius:5px;margin-top:8px;"
+        "padding-top:6px;font-weight:bold}"
+        "QGroupBox::title{subcontrol-origin:margin;left:8px;padding:0 3px;"
+        "color:#9aa0a6}"
+        "QPushButton{padding:5px 8px;border:1px solid #3a3d42;border-radius:4px;"
+        "background:#2c2f33}"
+        "QPushButton:hover{background:#34383d}"
+        "QPushButton:pressed{background:#26292c}"
+        "QPushButton:disabled{color:#6a6c6e;border-color:#2c2f33}"
+        "QLineEdit,QSpinBox,QDoubleSpinBox,QComboBox,QPlainTextEdit{"
+        "border:1px solid #3a3d42;border-radius:4px;padding:3px;background:#1a1c1e}"
+        "QProgressBar{border:1px solid #3a3d42;border-radius:4px;text-align:center;"
+        "background:#1a1c1e}QProgressBar::chunk{background:#0096d6;border-radius:3px}"
+        "QTabBar::tab{padding:6px 12px;background:#26292c;border:1px solid #3a3d42;"
+        "border-bottom:none;border-top-left-radius:4px;border-top-right-radius:4px}"
+        "QTabBar::tab:selected{background:#34383d}");
+}
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("SharkIndustries");
     QCoreApplication::setApplicationName("SharkCNC");
+    applyDarkTheme(app);
 
     QCommandLineParser cli;
     cli.addHelpOption();

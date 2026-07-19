@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QGridLayout>
+#include <QHBoxLayout>
 #include <QInputDialog>
 #include <QGroupBox>
 #include <QKeyEvent>
@@ -18,6 +19,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QShortcut>
 #include <QSettings>
 #include <QSpinBox>
 #include <QStatusBar>
@@ -33,10 +35,15 @@ using namespace scnc;
 
 MainWindow::MainWindow() {
     setWindowTitle("SharkCNC");
-    resize(1280, 820);
+    resize(1360, 920);
     mc_ = new MachineClient(this);
     view_ = new GcodeView(this);
     setCentralWidget(view_);
+
+    // side docks own the bottom corners, so they run full-height and the
+    // console only spans beneath the preview
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
     auto* side = new QDockWidget("Machine", this);
     side->setFeatures(QDockWidget::DockWidgetMovable);
@@ -110,6 +117,10 @@ MainWindow::MainWindow() {
                        [this] { mc_->zeroWork("XY"); });
     machine->addAction("Zero &Z here", this, [this] { mc_->zeroWork("Z"); });
 
+    auto* view = menuBar()->addMenu("&View");
+    view->addAction("&Fit", QKeySequence(Qt::Key_F), this,
+                    [this] { view_->fit(); });
+
     auto* probe = menuBar()->addMenu("&Probe");
     probe->addAction("&Z touch-off...", this, &MainWindow::zTouchOff);
     probe->addAction("&Height map / autolevel...", this,
@@ -144,14 +155,13 @@ MainWindow::MainWindow() {
                 stateLabel_->setStyleSheet(
                     QString("font-size:20px;font-weight:bold;color:%1")
                         .arg(color));
-                wposLabel_->setText(QString("W  X %1  Y %2  Z %3")
-                                        .arg(st.wx, 8, 'f', 3)
-                                        .arg(st.wy, 8, 'f', 3)
-                                        .arg(st.wz, 8, 'f', 3));
-                mposLabel_->setText(QString("M  X %1  Y %2  Z %3")
-                                        .arg(st.mx, 8, 'f', 3)
-                                        .arg(st.my, 8, 'f', 3)
-                                        .arg(st.mz, 8, 'f', 3));
+                unlockBtn_->setVisible(st.state == MachineState::Alarm);
+                const double wv[3] = {st.wx, st.wy, st.wz};
+                const double mv[3] = {st.mx, st.my, st.mz};
+                for (int i = 0; i < 3; ++i) {
+                    work_[i]->setText(QString::number(wv[i], 'f', 3));
+                    mach_[i]->setText("M " + QString::number(mv[i], 'f', 3));
+                }
                 feedLabel_->setText(QString("F %1   S %2")
                                         .arg(st.feed, 0, 'f', 0)
                                         .arg(st.speed, 0, 'f', 0));
@@ -214,89 +224,211 @@ QWidget* MainWindow::buildSidePanel() {
     auto* w = new QWidget;
     auto* lay = new QVBoxLayout(w);
     lay->setContentsMargins(6, 6, 6, 6);
+    lay->setSpacing(8);
+    lay->addWidget(buildConnectionBox());
+    lay->addWidget(buildDroBox());
+    lay->addWidget(buildJogBox());
+    lay->addWidget(buildJobBox());
+    lay->addStretch(1);
 
-    // --- connection
-    auto* connBox = new QGroupBox("Connection");
-    auto* cg = new QGridLayout(connBox);
+    auto* scroll = new QScrollArea;
+    scroll->setWidget(w);
+    scroll->setWidgetResizable(true);
+    scroll->setMinimumWidth(300);
+    scroll->setFrameShape(QFrame::NoFrame);
+    return scroll;
+}
+
+QWidget* MainWindow::buildConnectionBox() {
+    auto* box = new QGroupBox("Connection");
+    auto* v = new QVBoxLayout(box);
     connType_ = new QComboBox;
     connType_->addItems({"Network (FluidNC)", "Serial USB"});
+    v->addWidget(connType_);
+
+    netRow_ = new QWidget;
+    auto* nh = new QHBoxLayout(netRow_);
+    nh->setContentsMargins(0, 0, 0, 0);
     hostEdit_ = new QLineEdit;
+    hostEdit_->setPlaceholderText("host / IP");
     portSpin_ = new QSpinBox;
     portSpin_->setRange(1, 65535);
     portSpin_->setValue(23);
+    portSpin_->setMaximumWidth(72);
+    nh->addWidget(hostEdit_, 1);
+    nh->addWidget(portSpin_);
+    v->addWidget(netRow_);
+
+    serialRow_ = new QWidget;
+    auto* sh = new QHBoxLayout(serialRow_);
+    sh->setContentsMargins(0, 0, 0, 0);
     deviceEdit_ = new QLineEdit("/dev/ttyACM0");
     baudSpin_ = new QSpinBox;
     baudSpin_->setRange(9600, 921600);
     baudSpin_->setValue(115200);
+    baudSpin_->setMaximumWidth(90);
+    sh->addWidget(deviceEdit_, 1);
+    sh->addWidget(baudSpin_);
+    v->addWidget(serialRow_);
+
     connectBtn_ = new QPushButton("Connect");
-    cg->addWidget(connType_, 0, 0, 1, 2);
-    cg->addWidget(hostEdit_, 1, 0);
-    cg->addWidget(portSpin_, 1, 1);
-    cg->addWidget(deviceEdit_, 2, 0);
-    cg->addWidget(baudSpin_, 2, 1);
-    cg->addWidget(connectBtn_, 3, 0, 1, 2);
+    connectBtn_->setMinimumHeight(30);
+    v->addWidget(connectBtn_);
+
+    auto showFields = [this](int idx) {
+        netRow_->setVisible(idx == 0);
+        serialRow_->setVisible(idx == 1);
+    };
+    connect(connType_, &QComboBox::currentIndexChanged, this, showFields);
     connect(connectBtn_, &QPushButton::clicked, this, &MainWindow::doConnect);
-    lay->addWidget(connBox);
+    showFields(0);
+    return box;
+}
 
-    // --- DRO
-    auto* droBox = new QGroupBox("Position");
-    auto* dg = new QVBoxLayout(droBox);
+QWidget* MainWindow::buildDroBox() {
+    auto* box = new QGroupBox("Position");
+    auto* v = new QVBoxLayout(box);
+
+    auto* top = new QHBoxLayout;
     stateLabel_ = new QLabel("OFFLINE");
-    stateLabel_->setStyleSheet("font-size:20px;font-weight:bold");
-    wposLabel_ = new QLabel("W  X    0.000  Y    0.000  Z    0.000");
-    mposLabel_ = new QLabel("M  X    0.000  Y    0.000  Z    0.000");
-    feedLabel_ = new QLabel("F 0   S 0");
-    for (auto* l : {wposLabel_, mposLabel_, feedLabel_})
-        l->setFont(QFont("monospace", 11));
-    wposLabel_->setStyleSheet("font-weight:bold");
-    dg->addWidget(stateLabel_);
-    dg->addWidget(wposLabel_);
-    dg->addWidget(mposLabel_);
-    dg->addWidget(feedLabel_);
-    lay->addWidget(droBox);
+    stateLabel_->setStyleSheet("font-size:20px;font-weight:bold;color:#808080");
+    unlockBtn_ = new QPushButton("Unlock");
+    unlockBtn_->setVisible(false);
+    unlockBtn_->setStyleSheet(
+        "background:#c62828;font-weight:bold;border-color:#c62828");
+    connect(unlockBtn_, &QPushButton::clicked, this, [this] { mc_->unlock(); });
+    top->addWidget(stateLabel_);
+    top->addStretch(1);
+    top->addWidget(unlockBtn_);
+    v->addLayout(top);
 
-    // --- jog
-    auto* jogBox = new QGroupBox("Jog  (arrows / PgUp / PgDn)");
-    auto* jg = new QGridLayout(jogBox);
-    auto jbtn = [&](const QString& t, const QString& axes) {
+    const char* names[3] = {"X", "Y", "Z"};
+    const char* axisColor[3] = {"#e06c6c", "#7bc47b", "#6ca6e0"};
+    auto* grid = new QGridLayout;
+    grid->setColumnStretch(1, 1);
+    for (int i = 0; i < 3; ++i) {
+        auto* lbl = new QLabel(names[i]);
+        lbl->setStyleSheet(QString("font-weight:bold;font-size:16px;color:%1")
+                               .arg(axisColor[i]));
+        work_[i] = new QLabel("0.000");
+        work_[i]->setFont(QFont("monospace", 15, QFont::Bold));
+        work_[i]->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        mach_[i] = new QLabel("M 0.000");
+        mach_[i]->setFont(QFont("monospace", 8));
+        mach_[i]->setStyleSheet("color:#808488");
+        mach_[i]->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        auto* zero = new QPushButton("0");
+        zero->setToolTip(QString("Zero %1 at current position").arg(names[i]));
+        zero->setMaximumWidth(30);
+        zero->setFocusPolicy(Qt::NoFocus);
+        QString ax = names[i];
+        connect(zero, &QPushButton::clicked, this,
+                [this, ax] { mc_->zeroWork(ax); });
+        grid->addWidget(lbl, i, 0);
+        grid->addWidget(work_[i], i, 1);
+        grid->addWidget(mach_[i], i, 2);
+        grid->addWidget(zero, i, 3);
+    }
+    v->addLayout(grid);
+
+    auto* bottom = new QHBoxLayout;
+    feedLabel_ = new QLabel("F 0   S 0");
+    feedLabel_->setStyleSheet("color:#9aa0a6");
+    auto* zeroAll = new QPushButton("Zero XY");
+    zeroAll->setFocusPolicy(Qt::NoFocus);
+    connect(zeroAll, &QPushButton::clicked, this,
+            [this] { mc_->zeroWork("XY"); });
+    bottom->addWidget(feedLabel_);
+    bottom->addStretch(1);
+    bottom->addWidget(zeroAll);
+    v->addLayout(bottom);
+    return box;
+}
+
+QWidget* MainWindow::buildJogBox() {
+    auto* box = new QGroupBox("Jog");
+    auto* v = new QVBoxLayout(box);
+
+    auto* pad = new QGridLayout;
+    pad->setSpacing(4);
+    auto jbtn = [&](const QString& t, const QString& axes, int r, int c,
+                    const char* col = nullptr) {
         auto* b = new QPushButton(t);
         b->setFocusPolicy(Qt::NoFocus);
-        connect(b, &QPushButton::clicked, this, [this, axes] {
-            mc_->jog(axes.arg(jogStep()), jogFeed());
-        });
-        return b;
+        b->setMinimumSize(42, 30);
+        if (col) b->setStyleSheet(QString("color:%1;font-weight:bold").arg(col));
+        connect(b, &QPushButton::clicked, this,
+                [this, axes] { jogAxis(axes); });
+        pad->addWidget(b, r, c);
     };
-    jg->addWidget(jbtn("Y+", "Y%1"), 0, 1);
-    jg->addWidget(jbtn("Y-", "Y-%1"), 2, 1);
-    jg->addWidget(jbtn("X-", "X-%1"), 1, 0);
-    jg->addWidget(jbtn("X+", "X%1"), 1, 2);
-    jg->addWidget(jbtn("Z+", "Z%1"), 0, 3);
-    jg->addWidget(jbtn("Z-", "Z-%1"), 2, 3);
-    stepCombo_ = new QComboBox;
-    stepCombo_->addItems({"0.01", "0.1", "1", "10"});
-    stepCombo_->setCurrentIndex(2);
+    jbtn("Y+", "Y%1", 0, 1, "#7bc47b");
+    jbtn("X-", "X-%1", 1, 0, "#e06c6c");
+    jbtn("X+", "X%1", 1, 2, "#e06c6c");
+    jbtn("Y-", "Y-%1", 2, 1, "#7bc47b");
+    jbtn("Z+", "Z%1", 0, 3, "#6ca6e0");
+    jbtn("Z-", "Z-%1", 2, 3, "#6ca6e0");
+    // centre: go to work XY zero
+    auto* goZero = new QPushButton("⌂");
+    goZero->setToolTip("Rapid to work X0 Y0");
+    goZero->setFocusPolicy(Qt::NoFocus);
+    goZero->setMinimumSize(44, 34);
+    goZero->setMinimumSize(42, 30);
+    connect(goZero, &QPushButton::clicked, this, [this] {
+        mc_->sendCommand("G90");
+        mc_->sendCommand("G0 X0 Y0");
+    });
+    pad->addWidget(goZero, 1, 1);
+    v->addLayout(pad);
+
+    // step selector as buttons
+    auto* stepRow = new QHBoxLayout;
+    stepRow->addWidget(new QLabel("Step"));
+    for (double s : {0.01, 0.1, 1.0, 10.0}) {
+        auto* b = new QPushButton(QString::number(s));
+        b->setCheckable(true);
+        b->setFocusPolicy(Qt::NoFocus);
+        b->setProperty("step", s);
+        connect(b, &QPushButton::clicked, this, [this, s] { setStep(s); });
+        stepBtns_ << b;
+        stepRow->addWidget(b);
+    }
+    v->addLayout(stepRow);
+
+    auto* feedRow = new QHBoxLayout;
+    feedRow->addWidget(new QLabel("Feed"));
     jogFeedSpin_ = new QDoubleSpinBox;
     jogFeedSpin_->setRange(1, 5000);
     jogFeedSpin_->setValue(500);
     jogFeedSpin_->setSuffix(" mm/min");
-    jg->addWidget(new QLabel("Step"), 3, 0);
-    jg->addWidget(stepCombo_, 3, 1);
-    jg->addWidget(jogFeedSpin_, 3, 2, 1, 2);
-    lay->addWidget(jogBox);
+    feedRow->addWidget(jogFeedSpin_, 1);
+    v->addLayout(feedRow);
 
-    // --- job
-    auto* jobBox = new QGroupBox("Job");
-    auto* bg = new QGridLayout(jobBox);
-    runBtn_ = new QPushButton("Run");
+    auto* hint = new QLabel("Arrows · PgUp/PgDn · hold to jog");
+    hint->setStyleSheet("color:#70747a;font-size:10px");
+    v->addWidget(hint);
+
+    setStep(1.0);
+    return box;
+}
+
+QWidget* MainWindow::buildJobBox() {
+    auto* box = new QGroupBox("Job");
+    auto* g = new QGridLayout(box);
+    runBtn_ = new QPushButton("▶ Run");
     holdBtn_ = new QPushButton("Hold");
-    stopBtn_ = new QPushButton("Stop");
+    stopBtn_ = new QPushButton("■ Stop");
+    runBtn_->setStyleSheet(
+        "background:#2e7d32;font-weight:bold;border-color:#2e7d32");
+    stopBtn_->setStyleSheet(
+        "background:#c62828;font-weight:bold;border-color:#c62828");
+    for (auto* b : {runBtn_, holdBtn_, stopBtn_}) b->setMinimumHeight(34);
     holdBtn_->setEnabled(false);
     stopBtn_->setEnabled(false);
     jobBar_ = new QProgressBar;
-    bg->addWidget(runBtn_, 0, 0);
-    bg->addWidget(holdBtn_, 0, 1);
-    bg->addWidget(stopBtn_, 0, 2);
-    bg->addWidget(jobBar_, 1, 0, 1, 3);
+    g->addWidget(runBtn_, 0, 0);
+    g->addWidget(holdBtn_, 0, 1);
+    g->addWidget(stopBtn_, 0, 2);
+    g->addWidget(jobBar_, 1, 0, 1, 3);
     connect(runBtn_, &QPushButton::clicked, this, &MainWindow::runJob);
     connect(holdBtn_, &QPushButton::clicked, this, [this] {
         if (holdBtn_->text() == "Hold")
@@ -310,36 +442,62 @@ QWidget* MainWindow::buildSidePanel() {
             QMessageBox::Yes)
             mc_->stopJob();
     });
-    lay->addWidget(jobBox);
-    lay->addStretch(1);
-
-    auto* scroll = new QScrollArea;
-    scroll->setWidget(w);
-    scroll->setWidgetResizable(true);
-    scroll->setMinimumWidth(280);
-    return scroll;
+    return box;
 }
 
-double MainWindow::jogStep() const {
-    return stepCombo_->currentText().toDouble();
+void MainWindow::setStep(double mm) {
+    curStep_ = mm;
+    for (auto* b : stepBtns_)
+        b->setChecked(qFuzzyCompare(b->property("step").toDouble(), mm));
 }
+
 double MainWindow::jogFeed() const { return jogFeedSpin_->value(); }
+
+void MainWindow::jogAxis(const QString& axesTemplate) {
+    if (!mc_->isConnected()) return;
+    jogging_ = true;
+    mc_->jog(axesTemplate.arg(curStep_), jogFeed());
+}
+
+void MainWindow::keyReleaseEvent(QKeyEvent* e) {
+    // stop continuous (held-key) jogging cleanly on release
+    if (!e->isAutoRepeat() &&
+        (e->key() == Qt::Key_Left || e->key() == Qt::Key_Right ||
+         e->key() == Qt::Key_Up || e->key() == Qt::Key_Down ||
+         e->key() == Qt::Key_PageUp || e->key() == Qt::Key_PageDown)) {
+        // only a held (auto-repeated) jog gets cancelled; a single tap
+        // completes its discrete step
+        if (jogHeld_) mc_->jogCancel();
+        jogHeld_ = false;
+        jogging_ = false;
+        e->accept();
+        return;
+    }
+    QMainWindow::keyReleaseEvent(e);
+}
 
 void MainWindow::keyPressEvent(QKeyEvent* e) {
     if (mc_->isConnected() && !cmdEdit_->hasFocus()) {
-        double s = jogStep();
-        auto j = [&](const QString& axes) {
-            mc_->jog(axes, jogFeed());
-            e->accept();
-        };
+        QString ax;
         switch (e->key()) {
-            case Qt::Key_Left: return j(QString("X-%1").arg(s));
-            case Qt::Key_Right: return j(QString("X%1").arg(s));
-            case Qt::Key_Up: return j(QString("Y%1").arg(s));
-            case Qt::Key_Down: return j(QString("Y-%1").arg(s));
-            case Qt::Key_PageUp: return j(QString("Z%1").arg(s));
-            case Qt::Key_PageDown: return j(QString("Z-%1").arg(s));
+            case Qt::Key_Left: ax = "X-%1"; break;
+            case Qt::Key_Right: ax = "X%1"; break;
+            case Qt::Key_Up: ax = "Y%1"; break;
+            case Qt::Key_Down: ax = "Y-%1"; break;
+            case Qt::Key_PageUp: ax = "Z%1"; break;
+            case Qt::Key_PageDown: ax = "Z-%1"; break;
             default: break;
+        }
+        if (!ax.isEmpty()) {
+            if (e->isAutoRepeat()) jogHeld_ = true;  // continuous hold
+            jogAxis(ax);
+            e->accept();
+            return;
+        }
+        if (e->key() == Qt::Key_Escape) {  // panic stop
+            mc_->feedHold();
+            e->accept();
+            return;
         }
     }
     QMainWindow::keyPressEvent(e);
