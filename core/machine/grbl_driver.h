@@ -54,6 +54,7 @@ public:
         std::function<void(int, const std::string&)> onError; // error:N + line
         std::function<void(const ProbeResult&)> onProbe;
         std::function<void(const JobProgress&)> onJobProgress;
+        std::function<void(const std::string&)> onToolChange;  // M0/M6 message
         std::function<void()> onDisconnected;
     };
 
@@ -118,6 +119,8 @@ private:
     std::vector<size_t> window_;   // byte length of each in-flight line
     std::vector<std::function<void(int)>> pendingAcks_;
     std::chrono::steady_clock::time_point lastPoll_{};
+    bool pendingToolChange_ = false;
+    std::string toolChangeMsg_;
 };
 
 }  // namespace scnc

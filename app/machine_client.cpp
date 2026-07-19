@@ -41,6 +41,10 @@ MachineClient::MachineClient(QObject* parent) : QObject(parent) {
                              p.paused);
         });
     };
+    cb.onToolChange = [this, post](const std::string& m) {
+        QString q = QString::fromStdString(m);
+        post([this, q] { emit toolChangeRequested(q); });
+    };
     cb.onDisconnected = [this, post] {
         post([this] { emit disconnected(); });
     };

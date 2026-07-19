@@ -235,6 +235,23 @@ MainWindow::MainWindow() {
                 if (!running && acked == total && total > 0)
                     statusBar()->showMessage("Job complete", 10000);
             });
+    connect(mc_, &MachineClient::toolChangeRequested, this,
+            [this](const QString& msg) {
+                appendConsole("== TOOL CHANGE: " + msg, false);
+                QMessageBox box(this);
+                box.setWindowTitle("Tool change");
+                box.setIcon(QMessageBox::Information);
+                box.setText("<b>" + msg.toHtmlEscaped() + "</b>");
+                box.setInformativeText(
+                    "Insert the tool, re-touch off Z if needed, then Resume.");
+                auto* resumeB = box.addButton("Resume", QMessageBox::AcceptRole);
+                box.addButton("Cancel job", QMessageBox::RejectRole);
+                box.exec();
+                if (box.clickedButton() == resumeB)
+                    mc_->resumeJob();
+                else
+                    mc_->stopJob();
+            });
     connect(cmdEdit_, &QLineEdit::returnPressed, this, [this] {
         QString cmd = cmdEdit_->text().trimmed();
         if (cmd.isEmpty()) return;

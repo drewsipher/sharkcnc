@@ -1,5 +1,6 @@
 #include "grbl_driver.h"
 
+#include <cctype>
 #include <cstring>
 #include <numeric>
 
@@ -96,6 +97,7 @@ void GrblDriver::softReset() {
         jobPaused_ = false;
         job_.clear();
         jobSent_ = jobAcked_ = 0;
+        pendingToolChange_ = false;
         window_.clear();
         pendingAcks_.clear();
     }
@@ -135,6 +137,7 @@ bool GrblDriver::startJob(std::vector<std::string> lines) {
     jobSent_ = jobAcked_ = 0;
     jobRunning_ = true;
     jobPaused_ = false;
+    pendingToolChange_ = false;
     pumpJob();
     return true;
 }
@@ -180,12 +183,63 @@ void GrblDriver::writeRealtime(uint8_t b) {
     if (tp_) tp_->write(&b, 1);
 }
 
+namespace {
+// A line is a host-managed pause point if it carries M0/M00 or M6/M06.
+bool isToolChangeLine(const std::string& line, std::string& msg) {
+    std::string code;
+    bool sawM = false;
+    for (size_t i = 0; i < line.size(); ++i) {
+        char c = line[i];
+        if (c == ';' || c == '(') break;  // stop at comment
+        if (c == 'M' || c == 'm') {
+            // read the number
+            size_t j = i + 1;
+            std::string num;
+            while (j < line.size() && std::isdigit((unsigned char)line[j]))
+                num += line[j++];
+            if (num == "0" || num == "00" || num == "6" || num == "06")
+                sawM = true;
+        }
+        code += c;
+    }
+    if (!sawM) return false;
+    // message = comment after ';' or inside (...)
+    auto sc = line.find(';');
+    if (sc != std::string::npos) {
+        msg = line.substr(sc + 1);
+    } else {
+        auto op = line.find('('), cp = line.find(')');
+        if (op != std::string::npos && cp != std::string::npos && cp > op)
+            msg = line.substr(op + 1, cp - op - 1);
+    }
+    // trim
+    while (!msg.empty() && (msg.front() == ' ' || msg.front() == '\t'))
+        msg.erase(msg.begin());
+    while (!msg.empty() && (msg.back() == ' ' || msg.back() == '\r'))
+        msg.pop_back();
+    if (msg.empty()) msg = "Tool change - insert the next tool, then Resume";
+    return true;
+}
+}  // namespace
+
 void GrblDriver::pumpJob() {
     // caller holds m_
     if (!jobRunning_ || jobPaused_) return;
     size_t used = std::accumulate(window_.begin(), window_.end(), size_t{0});
     while (jobSent_ < job_.size()) {
         const std::string& L = job_[jobSent_];
+        // host-managed tool change: hold at the boundary until the machine
+        // drains, prompt, then the user resumes
+        std::string tcMsg;
+        if (isToolChangeLine(L, tcMsg)) {
+            if (!window_.empty()) break;  // let queued motion finish first
+            jobPaused_ = true;
+            pendingToolChange_ = true;
+            toolChangeMsg_ = tcMsg;
+            ++jobSent_;   // skip the M0/M6 line itself (we manage the pause)
+            ++jobAcked_;
+            break;
+        }
         size_t need = L.size() + 1;
         if (need > kRxBuffer) {  // pathological line: send alone
             if (!window_.empty()) break;
@@ -249,6 +303,7 @@ void GrblDriver::handleLine(const std::string& line) {
         std::function<void(int)> ack;
         JobProgress prog;
         bool notifyProg = false;
+        std::string toolMsg;
         {
             std::lock_guard lk(m_);
             if (!window_.empty()) window_.erase(window_.begin());
@@ -262,6 +317,10 @@ void GrblDriver::handleLine(const std::string& line) {
                     jobRunning_ = false;
                 }
                 pumpJob();
+                if (pendingToolChange_) {
+                    toolMsg = toolChangeMsg_;
+                    pendingToolChange_ = false;
+                }
                 prog = {jobSent_, jobAcked_, job_.size(), jobRunning_,
                         jobPaused_};
                 notifyProg = true;
@@ -270,6 +329,7 @@ void GrblDriver::handleLine(const std::string& line) {
         if (ack) ack(code);
         if (code && cb_.onError) cb_.onError(code, line);
         if (notifyProg && cb_.onJobProgress) cb_.onJobProgress(prog);
+        if (!toolMsg.empty() && cb_.onToolChange) cb_.onToolChange(toolMsg);
         return;
     }
 

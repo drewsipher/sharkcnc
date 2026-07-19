@@ -49,6 +49,7 @@ signals:
     void errorReported(int code, const QString& line);
     void probeFinished(bool ok, double x, double y, double z);
     void jobProgress(int acked, int total, bool running, bool paused);
+    void toolChangeRequested(const QString& message);
 
 private:
     void attach(std::unique_ptr<scnc::Transport> t, const QString& what);

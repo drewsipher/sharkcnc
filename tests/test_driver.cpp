@@ -192,3 +192,33 @@ TEST_CASE("stop re-enables run via job-progress reset") {
     CHECK(drv.startJob({"G0 X0"}));  // can run again immediately
     drv.disconnect();
 }
+
+TEST_CASE("multi-tool job pauses and prompts at M0, resumes to completion") {
+    Simulator sim;
+    std::atomic<bool> prompted{false}, done{false};
+    std::string msg;
+    std::atomic<int> acked{0}, total{0};
+    GrblDriver::Callbacks cb;
+    cb.onToolChange = [&](const std::string& m) { msg = m; prompted = true; };
+    cb.onJobProgress = [&](const JobProgress& p) {
+        acked = int(p.ackedLines); total = int(p.totalLines);
+        if (!p.running && p.totalLines > 0 && p.ackedLines == p.totalLines)
+            done = true;
+    };
+    GrblDriver drv(cb);
+    REQUIRE(drv.connect(sim.takeClientEnd()));
+    std::vector<std::string> job = {
+        "G0 X1", "G1 Z-1 F100", "G0 Z2",
+        "M0 ; change to 1.0mm drill",
+        "G0 X5", "G1 Z-1 F100", "G0 Z2"};
+    REQUIRE(drv.startJob(job));
+    REQUIRE(waitFor([&] { return prompted.load(); }));
+    CHECK(msg.find("1.0mm drill") != std::string::npos);
+    // job is paused at the tool change, not finished
+    CHECK_FALSE(done.load());
+    // operator inserts tool and resumes
+    drv.resumeJob();
+    REQUIRE(waitFor([&] { return done.load(); }, 5000ms));
+    CHECK(acked == total);
+    drv.disconnect();
+}
