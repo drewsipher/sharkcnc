@@ -32,15 +32,20 @@ signals:
     // User pressed "Load into sender".
     void sendToJob(const QString& gcode, const QString& title);
 
+public:
+    void setFacingArea(double x0, double y0, double w, double h);
+
 private slots:
     void browseGerber();
     void browseDrill();
     void regenIso();
     void regenDrill();
+    void regenFace();
 
 private:
     QWidget* buildIsoTab();
     QWidget* buildDrillTab();
+    QWidget* buildFaceTab();
 
     QTabWidget* tabs_;
 
@@ -68,4 +73,14 @@ private:
     QLabel* drillSummary_;
     QPushButton* drillSendBtn_;
     QString drillGcode_;
+
+    // facing
+    QDoubleSpinBox *faceX_, *faceY_, *faceW_, *faceH_, *faceTool_,
+        *faceStepover_, *faceDepth_, *facePass_, *faceFeed_, *facePlunge_,
+        *faceTravel_;
+    QSpinBox* faceRpm_;
+    QCheckBox* faceSpiral_;
+    QLabel* faceSummary_;
+    QPushButton* faceSendBtn_;
+    QString faceGcode_;
 };

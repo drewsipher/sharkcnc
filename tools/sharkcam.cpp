@@ -9,6 +9,7 @@
 #include <string>
 
 #include "cam/excellon.h"
+#include "cam/facing.h"
 #include "cam/gerber.h"
 #include "cam/isolation.h"
 
@@ -64,6 +65,12 @@ int usage() {
         "      --depth <mm=-1.8> --travel <mm=2> --plunge <mm/min=90>\n"
         "      --rpm <n=10000> --multi-tool --mirror\n"
         "\n"
+        "  sharkcam face -o <out.nc>   (surface flattening; no input file)\n"
+        "      --w <mm=50> --h <mm=50> --x0 <mm=0> --y0 <mm=0>\n"
+        "      --tool <mm=6> --stepover <0..1=0.4> --depth <mm=0.2>\n"
+        "      --pass-depth <mm=0.2> --feed <mm/min=800> --plunge <mm/min=300>\n"
+        "      --travel <mm=3> --rpm <n=12000> --spiral\n"
+        "\n"
         "  sharkcam info <file.gbr | file.drl>\n");
     return 2;
 }
@@ -71,8 +78,38 @@ int usage() {
 }  // namespace
 
 int main(int argc, char** argv) {
-    if (argc < 3) return usage();
+    if (argc < 2) return usage();
     std::string cmd = argv[1];
+
+    if (cmd == "face") {  // parametric, no input file
+        const char* outPath = argS(argc, argv, "-o", nullptr);
+        if (!outPath) return usage();
+        FacingOptions opt;
+        opt.x0 = argD(argc, argv, "--x0", opt.x0);
+        opt.y0 = argD(argc, argv, "--y0", opt.y0);
+        opt.width = argD(argc, argv, "--w", opt.width);
+        opt.height = argD(argc, argv, "--h", opt.height);
+        opt.toolDiameter = argD(argc, argv, "--tool", opt.toolDiameter);
+        opt.stepover = argD(argc, argv, "--stepover", opt.stepover);
+        opt.totalDepth = argD(argc, argv, "--depth", opt.totalDepth);
+        opt.depthPerPass = argD(argc, argv, "--pass-depth", opt.depthPerPass);
+        opt.feed = argD(argc, argv, "--feed", opt.feed);
+        opt.plunge = argD(argc, argv, "--plunge", opt.plunge);
+        opt.travelZ = argD(argc, argv, "--travel", opt.travelZ);
+        opt.spindleRpm = argI(argc, argv, "--rpm", opt.spindleRpm);
+        opt.spiral = argB(argc, argv, "--spiral");
+        auto r = facingRoutine(opt);
+        if (!r.ok) {
+            std::fprintf(stderr, "facing error: %s\n", r.error.c_str());
+            return 1;
+        }
+        if (!writeFile(outPath, r.gcode)) return 1;
+        std::printf("%d pass(es), %.0f mm of cutting -> %s\n", r.passes,
+                    r.lengthMm, outPath);
+        return 0;
+    }
+
+    if (argc < 3) return usage();
     std::string inPath = argv[2];
     bool ok = false;
     std::string text = readFile(inPath, ok);

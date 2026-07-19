@@ -245,3 +245,41 @@ TEST_CASE("tool library remove") {
     CHECK(lib.tools().size() == 3);
     CHECK_FALSE(lib.remove(99999));
 }
+
+// --- facing / flattening ------------------------------------------------
+#include "cam/facing.h"
+
+TEST_CASE("facing covers the area at the right depth") {
+    FacingOptions o;
+    o.width = 40; o.height = 20;
+    o.toolDiameter = 6; o.stepover = 0.5;
+    o.totalDepth = 0.6; o.depthPerPass = 0.2;  // 3 passes
+    auto r = facingRoutine(o);
+    REQUIRE(r.ok);
+    CHECK(r.passes == 3);
+    auto prog = parseGcode(r.gcode);
+    REQUIRE(prog.hasBounds());
+    CHECK(prog.min.z == Approx(-0.6));
+    // stays within the area (tool centre inside by the radius)
+    CHECK(prog.min.x >= Approx(o.x0).margin(0.01));
+    CHECK(prog.max.x <= Approx(o.x0 + o.width).margin(0.01));
+    CHECK(prog.min.y >= Approx(o.y0).margin(0.01));
+    CHECK(prog.max.y <= Approx(o.y0 + o.height).margin(0.01));
+    CHECK(r.lengthMm > o.width);  // multiple rows
+}
+
+TEST_CASE("facing spiral option produces a path") {
+    FacingOptions o;
+    o.width = 30; o.height = 30; o.toolDiameter = 6; o.spiral = true;
+    auto r = facingRoutine(o);
+    REQUIRE(r.ok);
+    CHECK(r.toolpaths.size() == 1);
+    CHECK(r.toolpaths[0].size() > 4);
+}
+
+TEST_CASE("facing rejects nonsense") {
+    FacingOptions o; o.width = 0;
+    CHECK_FALSE(facingRoutine(o).ok);
+    o = FacingOptions{}; o.toolDiameter = 0;
+    CHECK_FALSE(facingRoutine(o).ok);
+}

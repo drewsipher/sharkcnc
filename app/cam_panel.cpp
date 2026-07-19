@@ -18,6 +18,7 @@
 #include <QComboBox>
 
 #include "cam/excellon.h"
+#include "cam/facing.h"
 #include "cam/gerber.h"
 #include "cam/isolation.h"
 #include "tool_library.h"
@@ -28,6 +29,7 @@ CamPanel::CamPanel(QWidget* parent) : QWidget(parent) {
     tabs_ = new QTabWidget;
     tabs_->addTab(buildIsoTab(), "Copper (isolation)");
     tabs_->addTab(buildDrillTab(), "Drill");
+    tabs_->addTab(buildFaceTab(), "Face");
     auto* lay = new QVBoxLayout(this);
     lay->setContentsMargins(4, 4, 4, 4);
     lay->addWidget(tabs_);
@@ -224,6 +226,117 @@ QWidget* CamPanel::buildDrillTab() {
             emit sendToJob(drillGcode_, drillName_ + " [drill]");
     });
     return w;
+}
+
+QWidget* CamPanel::buildFaceTab() {
+    auto* w = new QWidget;
+    auto* lay = new QVBoxLayout(w);
+    auto* form = new QFormLayout;
+    auto mkD = [&](double v, double lo, double hi, double step) {
+        auto* s = new QDoubleSpinBox;
+        s->setRange(lo, hi);
+        s->setDecimals(2);
+        s->setSingleStep(step);
+        s->setValue(v);
+        return s;
+    };
+    faceX_ = mkD(0, -1000, 1000, 1);
+    faceY_ = mkD(0, -1000, 1000, 1);
+    faceW_ = mkD(50, 1, 1000, 1);
+    faceH_ = mkD(50, 1, 1000, 1);
+    faceTool_ = mkD(6, 0.5, 50, 0.5);
+    faceStepover_ = mkD(0.4, 0.05, 0.95, 0.05);
+    faceDepth_ = mkD(0.2, 0.01, 20, 0.05);
+    facePass_ = mkD(0.2, 0.01, 10, 0.05);
+    faceFeed_ = mkD(800, 1, 5000, 50);
+    facePlunge_ = mkD(300, 1, 2000, 50);
+    faceTravel_ = mkD(3, 0.1, 30, 0.5);
+    faceRpm_ = new QSpinBox;
+    faceRpm_->setRange(0, 60000);
+    faceRpm_->setValue(12000);
+    faceSpiral_ = new QCheckBox("Spiral (else raster zig-zag)");
+
+    auto* xyRow = new QHBoxLayout;
+    xyRow->addWidget(new QLabel("X0"));
+    xyRow->addWidget(faceX_);
+    xyRow->addWidget(new QLabel("Y0"));
+    xyRow->addWidget(faceY_);
+    auto* whRow = new QHBoxLayout;
+    whRow->addWidget(new QLabel("W"));
+    whRow->addWidget(faceW_);
+    whRow->addWidget(new QLabel("H"));
+    whRow->addWidget(faceH_);
+    form->addRow("Origin", xyRow);
+    form->addRow("Size mm", whRow);
+    form->addRow("Tool Ø mm", faceTool_);
+    form->addRow("Stepover 0..1", faceStepover_);
+    form->addRow("Total depth mm", faceDepth_);
+    form->addRow("Per pass mm", facePass_);
+    form->addRow("Feed mm/min", faceFeed_);
+    form->addRow("Plunge mm/min", facePlunge_);
+    form->addRow("Travel Z mm", faceTravel_);
+    form->addRow("Spindle RPM", faceRpm_);
+    form->addRow(faceSpiral_);
+    lay->addLayout(form);
+
+    faceSummary_ = new QLabel("Set an area to flatten.");
+    faceSummary_->setWordWrap(true);
+    lay->addWidget(faceSummary_);
+    auto* btnRow = new QHBoxLayout;
+    faceSendBtn_ = new QPushButton("Load into sender");
+    btnRow->addStretch(1);
+    btnRow->addWidget(faceSendBtn_);
+    lay->addLayout(btnRow);
+    lay->addStretch(1);
+
+    for (auto* s : {faceX_, faceY_, faceW_, faceH_, faceTool_, faceStepover_,
+                    faceDepth_, facePass_, faceFeed_, facePlunge_, faceTravel_})
+        connect(s, &QDoubleSpinBox::valueChanged, this, &CamPanel::regenFace);
+    connect(faceRpm_, &QSpinBox::valueChanged, this, &CamPanel::regenFace);
+    connect(faceSpiral_, &QCheckBox::toggled, this, &CamPanel::regenFace);
+    connect(faceSendBtn_, &QPushButton::clicked, this, [this] {
+        if (!faceGcode_.isEmpty()) emit sendToJob(faceGcode_, "facing");
+    });
+    regenFace();
+    return w;
+}
+
+void CamPanel::setFacingArea(double x0, double y0, double ww, double hh) {
+    faceX_->setValue(x0);
+    faceY_->setValue(y0);
+    faceW_->setValue(ww);
+    faceH_->setValue(hh);
+    tabs_->setCurrentIndex(2);
+}
+
+void CamPanel::regenFace() {
+    scnc::FacingOptions o;
+    o.x0 = faceX_->value();
+    o.y0 = faceY_->value();
+    o.width = faceW_->value();
+    o.height = faceH_->value();
+    o.toolDiameter = faceTool_->value();
+    o.stepover = faceStepover_->value();
+    o.totalDepth = faceDepth_->value();
+    o.depthPerPass = facePass_->value();
+    o.feed = faceFeed_->value();
+    o.plunge = facePlunge_->value();
+    o.travelZ = faceTravel_->value();
+    o.spindleRpm = faceRpm_->value();
+    o.spiral = faceSpiral_->isChecked();
+    auto r = scnc::facingRoutine(o);
+    if (!r.ok) {
+        faceSummary_->setText("Error: " + QString::fromStdString(r.error));
+        faceGcode_.clear();
+        faceSendBtn_->setEnabled(false);
+        return;
+    }
+    faceGcode_ = QString::fromStdString(r.gcode);
+    faceSendBtn_->setEnabled(true);
+    faceSummary_->setText(QString("%1 pass(es), %2 mm of cutting")
+                              .arg(r.passes)
+                              .arg(r.lengthMm, 0, 'f', 0));
+    emit previewReady(Clipper2Lib::PathsD{}, faceGcode_, "facing");
 }
 
 void CamPanel::browseGerber() {

@@ -9,6 +9,7 @@ add_library(scnc_core STATIC
   cam/gerber.cpp
   cam/excellon.cpp
   cam/isolation.cpp
+  cam/facing.cpp
   cam/gcode_out.cpp
   cam/tool.cpp
 )
