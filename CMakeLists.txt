@@ -29,7 +29,7 @@ add_subdirectory(core)
 add_subdirectory(tools)
 
 if(SHARKCNC_BUILD_APP)
-  find_package(Qt6 COMPONENTS Widgets QUIET)
+  find_package(Qt6 COMPONENTS Widgets OpenGLWidgets QUIET)
   if(Qt6_FOUND)
     add_subdirectory(app)
   else()

@@ -25,9 +25,12 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 
+#include <QStackedWidget>
+
 #include "cam_panel.h"
 #include "gcode/warp.h"
 #include "gcode_view.h"
+#include "gcode_view3d.h"
 #include "machine_client.h"
 #include "probe_dialog.h"
 #include "tool_dialog.h"
@@ -39,7 +42,11 @@ MainWindow::MainWindow() {
     resize(1360, 920);
     mc_ = new MachineClient(this);
     view_ = new GcodeView(this);
-    setCentralWidget(view_);
+    view3d_ = new GcodeView3D(this);
+    viewStack_ = new QStackedWidget(this);
+    viewStack_->addWidget(view_);     // index 0 = 2D
+    viewStack_->addWidget(view3d_);   // index 1 = 3D
+    setCentralWidget(viewStack_);
 
     // side docks own the bottom corners, so they run full-height and the
     // console only spans beneath the preview
@@ -63,7 +70,7 @@ MainWindow::MainWindow() {
                    const QString& title) {
                 program_ = parseGcode(gcode.toStdString());
                 programText_ = gcode;
-                view_->setProgram(program_);
+                showProgram(program_);
                 view_->setCopper(copper);
                 setWindowTitle("SharkCNC - " + title + " (preview)");
                 statusBar()->showMessage(
@@ -102,6 +109,7 @@ MainWindow::MainWindow() {
                     &MainWindow::openGerber);
     file->addAction("Open &Drill → CAM panel...", this,
                     &MainWindow::openDrill);
+    file->addAction("Open &STL (3D stock/part)...", this, &MainWindow::openStl);
     file->addSeparator();
     file->addAction("&Save loaded G-code...", QKeySequence::Save, this,
                     &MainWindow::saveGcode);
@@ -119,12 +127,39 @@ MainWindow::MainWindow() {
     machine->addAction("Zero &Z here", this, [this] { mc_->zeroWork("Z"); });
 
     auto* view = menuBar()->addMenu("&View");
+    auto* mode3d = view->addAction("&3D view");
+    mode3d->setCheckable(true);
+    mode3d->setShortcut(QKeySequence(Qt::Key_Tab));
+    connect(mode3d, &QAction::toggled, this, [this](bool on) {
+        viewStack_->setCurrentIndex(on ? 1 : 0);
+    });
+    auto* persp = view->addAction("&Perspective");
+    persp->setCheckable(true);
+    connect(persp, &QAction::toggled, this,
+            [this](bool on) { view3d_->setPerspective(on); });
+    view->addSeparator();
+    view->addAction("&Top", QKeySequence(Qt::Key_7), this, [this, mode3d] {
+        mode3d->setChecked(true);
+        view3d_->viewTop();
+    });
+    view->addAction("&Front", QKeySequence(Qt::Key_1), this, [this, mode3d] {
+        mode3d->setChecked(true);
+        view3d_->viewFront();
+    });
+    view->addAction("&Isometric", QKeySequence(Qt::Key_0), this,
+                    [this, mode3d] {
+                        mode3d->setChecked(true);
+                        view3d_->viewIso();
+                    });
+    view->addSeparator();
     view->addAction("Zoom &in", QKeySequence::ZoomIn, this,
                     [this] { view_->zoom(1.25); });
     view->addAction("Zoom &out", QKeySequence::ZoomOut, this,
                     [this] { view_->zoom(0.8); });
-    view->addAction("&Fit", QKeySequence(Qt::Key_F), this,
-                    [this] { view_->fit(); });
+    view->addAction("&Fit", QKeySequence(Qt::Key_F), this, [this] {
+        view_->fit();
+        view3d_->fit();
+    });
 
     auto* tools = menuBar()->addMenu("&Tools");
     tools->addAction("Tool &library...", this, [this] {
@@ -177,6 +212,7 @@ MainWindow::MainWindow() {
                                         .arg(st.feed, 0, 'f', 0)
                                         .arg(st.speed, 0, 'f', 0));
                 view_->setToolPosition(st.wx, st.wy);
+                view3d_->setToolPosition(st.wx, st.wy, st.wz);
             });
     connect(mc_, &MachineClient::lineReceived, this, [this](const QString& l) {
         if (!l.startsWith('<')) appendConsole(l, false);
@@ -531,15 +567,40 @@ void MainWindow::doConnect() {
         mc_->connectSerial(deviceEdit_->text(), baudSpin_->value());
 }
 
+void MainWindow::showProgram(const scnc::Program& p) {
+    view_->setProgram(p);
+    view3d_->setProgram(p);
+}
+
 void MainWindow::loadProgramText(const QString& text, const QString& title) {
     programText_ = text;
     program_ = parseGcode(text.toStdString());
-    view_->setProgram(program_);
+    showProgram(program_);
     setWindowTitle("SharkCNC - " + title);
     statusBar()->showMessage(
         QString("%1 lines, %2 motion segments")
             .arg(programText_.count('\n'))
             .arg(program_.segments.size()));
+}
+
+void MainWindow::loadStlPath(const QString& p) { view3d_->loadStl(p); }
+
+void MainWindow::forceView3D() { viewStack_->setCurrentIndex(1); view3d_->viewIso(); }
+
+void MainWindow::openStl() {
+    QSettings s;
+    QString fn = QFileDialog::getOpenFileName(
+        this, "Open STL model", s.value("dir/stl").toString(),
+        "STL mesh (*.stl);;All files (*)");
+    if (fn.isEmpty()) return;
+    s.setValue("dir/stl", QFileInfo(fn).absolutePath());
+    if (view3d_->loadStl(fn)) {
+        viewStack_->setCurrentIndex(1);  // jump to 3D
+        statusBar()->showMessage("Loaded " + QFileInfo(fn).fileName() +
+                                 " - Tab toggles 2D/3D", 6000);
+    } else {
+        statusBar()->showMessage("Could not read STL", 5000);
+    }
 }
 
 void MainWindow::openGcode() {

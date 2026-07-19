@@ -63,6 +63,10 @@ int main(int argc, char** argv) {
     QCommandLineOption camGerberOpt("cam-gerber", "Preload a gerber into the CAM panel", "file");
     cli.addOption(camGerberOpt);
     QCommandLineOption toolDlgOpt("tool-dialog", "Open the tool library dialog (debug)");
+    QCommandLineOption v3dOpt("view3d", "Start in 3D view (debug)");
+    QCommandLineOption stlOpt("stl", "Load an STL on startup (debug)", "file");
+    cli.addOption(stlOpt);
+    cli.addOption(v3dOpt);
     cli.addOption(toolDlgOpt);
     QCommandLineOption shotOpt("screenshot",
                                "Save a window capture after 3s and exit "
@@ -80,6 +84,8 @@ int main(int argc, char** argv) {
         w.autoConnectTcp(hp.section(':', 0, 0),
                          hp.section(':', 1, 1).toInt());
     }
+    if (cli.isSet(stlOpt)) w.loadStlPath(cli.value(stlOpt));
+    if (cli.isSet(v3dOpt)) w.forceView3D();
     w.show();
     QDialog* dbgDlg = nullptr;
     if (cli.isSet(toolDlgOpt)) { dbgDlg = new ToolDialog(&w); dbgDlg->show(); }

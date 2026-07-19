@@ -5,7 +5,9 @@
 
 class MachineClient;
 class GcodeView;
+class GcodeView3D;
 class CamPanel;
+class QStackedWidget;
 class QLabel;
 class QPlainTextEdit;
 class QLineEdit;
@@ -22,6 +24,8 @@ public:
     void openPath(const QString& path);
     void autoConnectTcp(const QString& host, int port);
     void openCamGerber(const QString& path);
+    void forceView3D();
+    void loadStlPath(const QString& p);
 
 protected:
     void keyPressEvent(QKeyEvent* e) override;
@@ -53,7 +57,11 @@ private:
 
     MachineClient* mc_;
     GcodeView* view_;
+    GcodeView3D* view3d_ = nullptr;
+    QStackedWidget* viewStack_;
     CamPanel* cam_;
+    void showProgram(const scnc::Program& p);  // push to both views
+    void openStl();
     scnc::Program program_;
     QString programText_;
 
