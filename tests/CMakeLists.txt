@@ -5,6 +5,7 @@ add_executable(scnc_tests
   test_cam.cpp
 )
 target_link_libraries(scnc_tests PRIVATE scnc_core Catch2::Catch2WithMain)
+target_compile_definitions(scnc_tests PRIVATE FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 include(Catch)
 catch_discover_tests(scnc_tests)

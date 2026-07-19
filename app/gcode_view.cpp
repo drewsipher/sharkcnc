@@ -1,0 +1,170 @@
+#include "gcode_view.h"
+
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
+#include <QWheelEvent>
+
+using namespace scnc;
+
+GcodeView::GcodeView(QWidget* parent) : QWidget(parent) {
+    setMinimumSize(300, 200);
+    setAutoFillBackground(true);
+    QPalette pal = palette();
+    pal.setColor(QPalette::Window, QColor(24, 26, 28));
+    setPalette(pal);
+    setMouseTracking(false);
+}
+
+void GcodeView::setProgram(const Program& p) {
+    prog_ = p;
+    rebuildCache();
+    fit();
+}
+
+void GcodeView::clearProgram() {
+    prog_ = Program{};
+    rapids_.clear();
+    cuts_.clear();
+    update();
+}
+
+void GcodeView::setToolPosition(double x, double y) {
+    toolX_ = x;
+    toolY_ = y;
+    haveTool_ = true;
+    update();
+}
+
+void GcodeView::rebuildCache() {
+    rapids_.clear();
+    cuts_.clear();
+    // merge consecutive segments of the same class into polylines
+    QPolygonF cur;
+    bool curIsCut = false;
+    auto flush = [&] {
+        if (cur.size() >= 2)
+            (curIsCut ? cuts_ : rapids_).push_back(cur);
+        cur.clear();
+    };
+    Vec3 last{1e30, 1e30, 1e30};
+    for (const auto& s : prog_.segments) {
+        bool isCut = s.type != MotionType::Rapid;
+        bool contiguous =
+            std::abs(s.from.x - last.x) < 1e-9 &&
+            std::abs(s.from.y - last.y) < 1e-9 && isCut == curIsCut;
+        if (!contiguous) {
+            flush();
+            curIsCut = isCut;
+            cur << QPointF(s.from.x, -s.from.y);
+        }
+        if (s.type == MotionType::ArcCW || s.type == MotionType::ArcCCW) {
+            for (auto& p : tessellateArc(s, 0.05))
+                cur << QPointF(p.x, -p.y);
+        } else {
+            cur << QPointF(s.to.x, -s.to.y);
+        }
+        last = s.to;
+    }
+    flush();
+}
+
+QPointF GcodeView::toScreen(double x, double y) const {
+    return {width() / 2.0 + (x - center_.x()) * scale_,
+            height() / 2.0 + (y - center_.y()) * scale_};
+}
+
+void GcodeView::fit() {
+    if (!prog_.hasBounds()) {
+        center_ = {0, 0};
+        scale_ = 4.0;
+        update();
+        return;
+    }
+    double w = prog_.max.x - prog_.min.x, h = prog_.max.y - prog_.min.y;
+    center_ = QPointF((prog_.min.x + prog_.max.x) / 2,
+                      -(prog_.min.y + prog_.max.y) / 2);
+    double sx = width() / (w + 10.0), sy = height() / (h + 10.0);
+    scale_ = std::max(0.05, std::min(sx, sy));
+    update();
+}
+
+void GcodeView::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, scale_ > 1.0);
+
+    // grid every 10mm
+    p.setPen(QColor(44, 48, 52));
+    double step = 10.0 * scale_;
+    if (step > 8) {
+        QPointF o = toScreen(0, 0);
+        for (double x = std::fmod(o.x(), step); x < width(); x += step)
+            p.drawLine(QPointF(x, 0), QPointF(x, height()));
+        for (double y = std::fmod(o.y(), step); y < height(); y += step)
+            p.drawLine(QPointF(0, y), QPointF(width(), y));
+    }
+    // axes
+    QPointF o = toScreen(0, 0);
+    p.setPen(QColor(120, 60, 60));
+    p.drawLine(QPointF(0, o.y()), QPointF(width(), o.y()));
+    p.setPen(QColor(60, 120, 60));
+    p.drawLine(QPointF(o.x(), 0), QPointF(o.x(), height()));
+
+    p.save();
+    p.translate(width() / 2.0, height() / 2.0);
+    p.scale(scale_, scale_);
+    p.translate(-center_.x(), -center_.y());
+
+    QPen rapidPen(QColor(110, 110, 110, 150));
+    rapidPen.setWidthF(0);
+    rapidPen.setStyle(Qt::DashLine);
+    p.setPen(rapidPen);
+    for (const auto& poly : rapids_) p.drawPolyline(poly);
+
+    QPen cutPen(QColor(80, 180, 255));
+    cutPen.setWidthF(0);
+    p.setPen(cutPen);
+    for (const auto& poly : cuts_) p.drawPolyline(poly);
+    p.restore();
+
+    if (haveTool_) {
+        QPointF t = toScreen(toolX_, -toolY_);
+        p.setPen(QPen(QColor(255, 80, 80), 2));
+        p.drawLine(t + QPointF(-8, 0), t + QPointF(8, 0));
+        p.drawLine(t + QPointF(0, -8), t + QPointF(0, 8));
+        p.drawEllipse(t, 4, 4);
+    }
+
+    p.setPen(QColor(150, 150, 150));
+    p.drawText(8, height() - 8,
+               QString("%1 mm/px  |  %2 segments")
+                   .arg(1.0 / scale_, 0, 'f', 2)
+                   .arg(prog_.segments.size()));
+}
+
+void GcodeView::wheelEvent(QWheelEvent* e) {
+    double f = e->angleDelta().y() > 0 ? 1.2 : 1 / 1.2;
+    // zoom about cursor
+    QPointF before{
+        center_.x() + (e->position().x() - width() / 2.0) / scale_,
+        center_.y() + (e->position().y() - height() / 2.0) / scale_};
+    scale_ = std::clamp(scale_ * f, 0.02, 500.0);
+    QPointF after{
+        center_.x() + (e->position().x() - width() / 2.0) / scale_,
+        center_.y() + (e->position().y() - height() / 2.0) / scale_};
+    center_ += before - after;
+    update();
+}
+
+void GcodeView::mousePressEvent(QMouseEvent* e) {
+    dragStart_ = e->pos();
+    dragCenter_ = center_;
+}
+
+void GcodeView::mouseMoveEvent(QMouseEvent* e) {
+    QPoint d = e->pos() - dragStart_;
+    center_ = dragCenter_ - QPointF(d.x() / scale_, d.y() / scale_);
+    update();
+}
+
+void GcodeView::resizeEvent(QResizeEvent*) { update(); }

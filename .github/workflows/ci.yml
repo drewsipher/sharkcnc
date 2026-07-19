@@ -1,0 +1,34 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build qt6-base-dev
+      - name: Configure
+        run: cmake --preset release
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: App smoke test (offscreen)
+        run: |
+          ./build/tools/scnc-sim 2323 &
+          sleep 1
+          QT_QPA_PLATFORM=offscreen ./build/app/sharkcnc \
+            --tcp 127.0.0.1:2323 --screenshot /tmp/shot.png
+          test -s /tmp/shot.png
+      - name: CAM smoke test
+        run: |
+          ./build/tools/sharkcam info tests/fixtures/kicad_f_cu.gbr
+          ./build/tools/sharkcam iso tests/fixtures/kicad_f_cu.gbr -o /tmp/iso.nc
+          ./build/tools/sharkcam drill tests/fixtures/kicad_pth.drl -o /tmp/drill.nc
+          test -s /tmp/iso.nc && test -s /tmp/drill.nc

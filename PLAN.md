@@ -166,7 +166,7 @@ CI, and the app is developable away from the shop.
   configured for the machine (1259.8 steps/mm @ 1/8 µstep, accel/rapids tuned,
   homing off existing or added limit switches). Validate with ioSender/Candle.
   *Exit: mill cuts a test part under grblHAL.*
-- **M1 — Repo, CI, core, minimal UI.** Layout above; G-code parser + program
+- **M1 — Repo, CI, core, minimal UI.** *(DONE 2026-07-19: core lib, driver+simulator, Qt app w/ jog/DRO/console/run/preview, CI. Bonus: M3 probing engine + M4 gerber CAM first slices shipped early.)* Layout above; G-code parser + program
   model; transport + grblHAL driver + simulator; Qt app: connect, DRO, jog
   (keyboard + on-screen), homing, zeroing, load/preview/run/hold/resume/abort,
   console. *Exit: full job run from our app; sim-integration CI green.*

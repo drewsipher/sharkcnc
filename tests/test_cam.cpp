@@ -153,3 +153,39 @@ TEST_CASE("drill gcode reaches every hole") {
         if (s.type == MotionType::Feed && s.to.z < 0) ++plunges;
     CHECK(plunges == 3);
 }
+
+// --- real KiCad output fixtures ----------------------------------------
+#include <fstream>
+#include <sstream>
+
+namespace {
+std::string readFixture(const char* name) {
+    std::ifstream f(std::string(FIXTURE_DIR) + "/" + name);
+    std::ostringstream ss;
+    ss << f.rdbuf();
+    return ss.str();
+}
+}  // namespace
+
+TEST_CASE("real KiCad gerber parses with macro apertures") {
+    auto r = parseGerber(readFixture("kicad_f_cu.gbr"));
+    REQUIRE(r.ok);
+    CHECK(r.layer.flashes == 12);
+    CHECK(r.layer.strokes == 3);
+    REQUIRE_FALSE(r.layer.copper.empty());
+    // isolation on it must produce non-trivial toolpaths
+    IsolationOptions opt;
+    auto iso = isolationRoute(r.layer, opt);
+    REQUIRE(iso.ok);
+    CHECK(iso.lengthMm > 50);
+}
+
+TEST_CASE("real KiCad excellon parses") {
+    auto d = parseExcellon(readFixture("kicad_pth.drl"));
+    REQUIRE(d.ok);
+    CHECK(d.tools.size() == 2);
+    CHECK(d.hits.size() == 5);
+    auto g = drillGcode(d, {});
+    REQUIRE(g.ok);
+    CHECK(g.holes == 5);
+}
