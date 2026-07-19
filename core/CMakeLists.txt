@@ -10,6 +10,7 @@ add_library(scnc_core STATIC
   cam/excellon.cpp
   cam/isolation.cpp
   cam/gcode_out.cpp
+  cam/tool.cpp
 )
 target_include_directories(scnc_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(scnc_core PUBLIC Clipper2)

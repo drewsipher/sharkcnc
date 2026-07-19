@@ -195,6 +195,11 @@ void GcodeView::paintEvent(QPaintEvent*) {
 
 void GcodeView::mouseDoubleClickEvent(QMouseEvent*) { fit(); }
 
+void GcodeView::zoom(double factor) {
+    scale_ = std::clamp(scale_ * factor, 0.02, 500.0);
+    update();
+}
+
 void GcodeView::wheelEvent(QWheelEvent* e) {
     double f = e->angleDelta().y() > 0 ? 1.2 : 1 / 1.2;
     // zoom about cursor

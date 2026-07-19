@@ -189,3 +189,59 @@ TEST_CASE("real KiCad excellon parses") {
     REQUIRE(g.ok);
     CHECK(g.holes == 5);
 }
+
+// --- tool library -------------------------------------------------------
+#include "cam/tool.h"
+
+TEST_CASE("v-bit isolation width grows with depth") {
+    Tool v;
+    v.type = ToolType::VBit;
+    v.diameter = 3.175;
+    v.tipAngle = 30;  // included; half = 15deg
+    // width = 2 * depth * tan(15deg); at 0.1mm depth ~ 0.0536mm
+    CHECK(v.widthAtDepth(0.1) == Approx(2 * 0.1 * std::tan(15 * M_PI / 180)).margin(1e-4));
+    // deeper cut => wider, capped at diameter
+    CHECK(v.widthAtDepth(100) == Approx(3.175));
+    CHECK(v.widthAtDepth(0.0) == Approx(0.0));
+}
+
+TEST_CASE("flat endmill width is constant") {
+    Tool e;
+    e.type = ToolType::EndMill;
+    e.diameter = 1.0;
+    CHECK(e.widthAtDepth(0.05) == Approx(1.0));
+    CHECK(e.widthAtDepth(5.0) == Approx(1.0));
+}
+
+TEST_CASE("ball nose width follows the sphere") {
+    Tool b;
+    b.type = ToolType::BallNose;
+    b.diameter = 2.0;  // r=1
+    CHECK(b.widthAtDepth(1.0) == Approx(2.0));       // full radius -> full dia
+    CHECK(b.widthAtDepth(0.5) == Approx(2 * std::sqrt(1 - 0.25)).margin(1e-6));
+}
+
+TEST_CASE("tool library json round trip and lookup") {
+    auto lib = ToolLibrary::defaults();
+    REQUIRE(lib.tools().size() == 4);
+    int id = lib.tools()[0].id;
+    REQUIRE(lib.find(id) != nullptr);
+    auto back = ToolLibrary::fromJson(lib.toJson());
+    REQUIRE(back.tools().size() == 4);
+    CHECK(back.tools()[0].name == lib.tools()[0].name);
+    CHECK(back.tools()[0].type == lib.tools()[0].type);
+    CHECK(back.find(id) != nullptr);
+    // adding after load gets a fresh, non-colliding id
+    int nid = back.add(Tool{});
+    for (const auto& t : back.tools())
+        CHECK((t.id == nid) == (&t == &back.tools().back()));
+}
+
+TEST_CASE("tool library remove") {
+    auto lib = ToolLibrary::defaults();
+    int id = lib.tools()[1].id;
+    CHECK(lib.remove(id));
+    CHECK(lib.find(id) == nullptr);
+    CHECK(lib.tools().size() == 3);
+    CHECK_FALSE(lib.remove(99999));
+}

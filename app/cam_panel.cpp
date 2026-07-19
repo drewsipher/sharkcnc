@@ -15,9 +15,12 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 
+#include <QComboBox>
+
 #include "cam/excellon.h"
 #include "cam/gerber.h"
 #include "cam/isolation.h"
+#include "tool_library.h"
 
 using namespace scnc;
 
@@ -52,7 +55,12 @@ QWidget* CamPanel::buildIsoTab() {
         s->setValue(v);
         return s;
     };
+    // tool picker from the library (drives width for V-bits by depth)
+    isoToolPick_ = new QComboBox;
     isoTool_ = mkD(0.2, 0.01, 5, 0.05);
+    isoToolNote_ = new QLabel;
+    isoToolNote_->setStyleSheet("color:#9aa0a6;font-size:10px");
+    isoToolNote_->setWordWrap(true);
     isoPasses_ = new QSpinBox;
     isoPasses_->setRange(1, 12);
     isoOverlap_ = mkD(0.5, 0.0, 0.9, 0.1);
@@ -64,7 +72,9 @@ QWidget* CamPanel::buildIsoTab() {
     isoRpm_->setRange(0, 60000);
     isoRpm_->setValue(10000);
     isoMirror_ = new QCheckBox("Mirror X (bottom copper)");
-    form->addRow("Tool Ø mm", isoTool_);
+    form->addRow("Tool", isoToolPick_);
+    form->addRow("Width Ø mm", isoTool_);
+    form->addRow("", isoToolNote_);
     form->addRow("Passes", isoPasses_);
     form->addRow("Overlap 0..1", isoOverlap_);
     form->addRow("Cut Z mm", isoDepth_);
@@ -94,11 +104,62 @@ QWidget* CamPanel::buildIsoTab() {
     connect(isoPasses_, &QSpinBox::valueChanged, this, &CamPanel::regenIso);
     connect(isoRpm_, &QSpinBox::valueChanged, this, &CamPanel::regenIso);
     connect(isoMirror_, &QCheckBox::toggled, this, &CamPanel::regenIso);
+    // picking a tool (or changing depth) recomputes the effective width
+    connect(isoToolPick_, &QComboBox::currentIndexChanged, this,
+            [this] { applyPickedTool(); });
+    connect(isoDepth_, &QDoubleSpinBox::valueChanged, this,
+            [this] { applyPickedTool(); });
+    connect(&ToolLibraryModel::instance(), &ToolLibraryModel::changed, this,
+            [this] { refreshToolPicker(); });
     connect(isoSendBtn_, &QPushButton::clicked, this, [this] {
         if (!isoGcode_.isEmpty())
             emit sendToJob(isoGcode_, gerberName_ + " [isolation]");
     });
+    refreshToolPicker();
     return w;
+}
+
+void CamPanel::refreshToolPicker() {
+    int keepId = isoToolPick_->currentData().toInt();
+    QSignalBlocker block(isoToolPick_);
+    isoToolPick_->clear();
+    isoToolPick_->addItem("Manual width", -1);
+    for (const auto& t : ToolLibraryModel::instance().lib().tools())
+        isoToolPick_->addItem(QString::fromStdString(t.summary()), t.id);
+    int idx = isoToolPick_->findData(keepId);
+    isoToolPick_->setCurrentIndex(idx >= 0 ? idx : 0);
+    applyPickedTool();
+}
+
+void CamPanel::applyPickedTool() {
+    int id = isoToolPick_->currentData().toInt();
+    const scnc::Tool* t = ToolLibraryModel::instance().lib().find(id);
+    if (!t) {  // manual mode
+        isoTool_->setEnabled(true);
+        isoToolNote_->clear();
+        regenIso();
+        return;
+    }
+    double depth = -isoDepth_->value();  // cut depth below surface (positive)
+    double w = t->widthAtDepth(depth);
+    isoTool_->setEnabled(false);         // width is derived from the tool
+    {
+        QSignalBlocker b(isoTool_);
+        isoTool_->setValue(w);
+    }
+    if (t->feed > 0) { QSignalBlocker b(isoFeed_); isoFeed_->setValue(t->feed); }
+    if (t->plunge > 0) { QSignalBlocker b(isoPlunge_); isoPlunge_->setValue(t->plunge); }
+    if (t->rpm > 0) { QSignalBlocker b(isoRpm_); isoRpm_->setValue(t->rpm); }
+    if (t->type == scnc::ToolType::VBit || t->type == scnc::ToolType::Chamfer ||
+        t->type == scnc::ToolType::Engraver)
+        isoToolNote_->setText(
+            QString("V-tool: %1 mm wide at %2 mm depth — change depth to "
+                    "change isolation width")
+                .arg(w, 0, 'f', 3)
+                .arg(depth, 0, 'f', 2));
+    else
+        isoToolNote_->setText(QString("flat width %1 mm").arg(w, 0, 'f', 3));
+    regenIso();
 }
 
 QWidget* CamPanel::buildDrillTab() {

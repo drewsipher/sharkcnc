@@ -4,6 +4,8 @@
 #include <QTimer>
 
 #include "main_window.h"
+#include "tool_dialog.h"
+#include <QDialog>
 
 static void applyDarkTheme(QApplication& app) {
     app.setStyle(QStyleFactory::create("Fusion"));
@@ -60,6 +62,8 @@ int main(int argc, char** argv) {
     cli.addOption(tcpOpt);
     QCommandLineOption camGerberOpt("cam-gerber", "Preload a gerber into the CAM panel", "file");
     cli.addOption(camGerberOpt);
+    QCommandLineOption toolDlgOpt("tool-dialog", "Open the tool library dialog (debug)");
+    cli.addOption(toolDlgOpt);
     QCommandLineOption shotOpt("screenshot",
                                "Save a window capture after 3s and exit "
                                "(works with QT_QPA_PLATFORM=offscreen)",
@@ -77,10 +81,12 @@ int main(int argc, char** argv) {
                          hp.section(':', 1, 1).toInt());
     }
     w.show();
+    QDialog* dbgDlg = nullptr;
+    if (cli.isSet(toolDlgOpt)) { dbgDlg = new ToolDialog(&w); dbgDlg->show(); }
     if (cli.isSet(shotOpt)) {
         QString out = cli.value(shotOpt);
-        QTimer::singleShot(3000, &w, [&w, out] {
-            w.grab().save(out);
+        QTimer::singleShot(3000, &w, [&w, out, dbgDlg] {
+            (dbgDlg ? dbgDlg->grab() : w.grab()).save(out);
             QApplication::quit();
         });
     }

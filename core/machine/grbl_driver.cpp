@@ -95,10 +95,13 @@ void GrblDriver::softReset() {
         jobRunning_ = false;
         jobPaused_ = false;
         job_.clear();
+        jobSent_ = jobAcked_ = 0;
         window_.clear();
         pendingAcks_.clear();
     }
     writeRealtime(0x18);
+    // let the UI reset its Run/Hold/Stop state after an abort
+    if (cb_.onJobProgress) cb_.onJobProgress({0, 0, 0, false, false});
 }
 
 void GrblDriver::unlock() { sendCommand("$X"); }
@@ -123,6 +126,11 @@ void GrblDriver::probe(const std::string& cmd) { sendCommand(cmd); }
 bool GrblDriver::startJob(std::vector<std::string> lines) {
     std::lock_guard lk(m_);
     if (jobRunning_ || !connected_) return false;
+    // drop trailing blank lines so completion lands cleanly at 100%
+    while (!lines.empty() &&
+           lines.back().find_first_not_of(" \t\r\n") == std::string::npos)
+        lines.pop_back();
+    if (lines.empty()) return false;
     job_ = std::move(lines);
     jobSent_ = jobAcked_ = 0;
     jobRunning_ = true;

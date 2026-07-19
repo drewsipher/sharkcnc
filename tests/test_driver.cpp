@@ -153,3 +153,42 @@ TEST_CASE("soft reset clears a running job") {
     CHECK_FALSE(p.running);
     drv.disconnect();
 }
+
+TEST_CASE("job with trailing blank lines completes at 100%") {
+    Simulator sim;
+    std::atomic<bool> done{false};
+    std::atomic<int> acked{0}, total{0};
+    GrblDriver::Callbacks cb;
+    cb.onJobProgress = [&](const JobProgress& p) {
+        acked = static_cast<int>(p.ackedLines);
+        total = static_cast<int>(p.totalLines);
+        if (!p.running && p.totalLines > 0 && p.ackedLines == p.totalLines)
+            done = true;
+    };
+    GrblDriver drv(cb);
+    REQUIRE(drv.connect(sim.takeClientEnd()));
+    // mimic a CAM file: real lines then trailing blanks (from split on '\n')
+    std::vector<std::string> lines = {"G21", "G90", "G0 X1", "M5", "M2", "", ""};
+    REQUIRE(drv.startJob(lines));
+    REQUIRE(waitFor([&] { return done.load(); }, 5000ms));
+    CHECK(acked == total);
+    CHECK(total == 5);  // trailing blanks stripped
+    drv.disconnect();
+}
+
+TEST_CASE("stop re-enables run via job-progress reset") {
+    Simulator sim;
+    bool sawReset = false;
+    GrblDriver::Callbacks cb;
+    cb.onJobProgress = [&](const JobProgress& p) {
+        if (!p.running && p.totalLines == 0) sawReset = true;
+    };
+    GrblDriver drv(cb);
+    REQUIRE(drv.connect(sim.takeClientEnd()));
+    std::vector<std::string> lines(300, "G1 X1 F1000");
+    REQUIRE(drv.startJob(lines));
+    drv.stopJob();
+    REQUIRE(waitFor([&] { return sawReset; }));
+    CHECK(drv.startJob({"G0 X0"}));  // can run again immediately
+    drv.disconnect();
+}

@@ -30,6 +30,7 @@
 #include "gcode_view.h"
 #include "machine_client.h"
 #include "probe_dialog.h"
+#include "tool_dialog.h"
 
 using namespace scnc;
 
@@ -118,8 +119,18 @@ MainWindow::MainWindow() {
     machine->addAction("Zero &Z here", this, [this] { mc_->zeroWork("Z"); });
 
     auto* view = menuBar()->addMenu("&View");
+    view->addAction("Zoom &in", QKeySequence::ZoomIn, this,
+                    [this] { view_->zoom(1.25); });
+    view->addAction("Zoom &out", QKeySequence::ZoomOut, this,
+                    [this] { view_->zoom(0.8); });
     view->addAction("&Fit", QKeySequence(Qt::Key_F), this,
                     [this] { view_->fit(); });
+
+    auto* tools = menuBar()->addMenu("&Tools");
+    tools->addAction("Tool &library...", this, [this] {
+        ToolDialog dlg(this);
+        dlg.exec();
+    });
 
     auto* probe = menuBar()->addMenu("&Probe");
     probe->addAction("&Z touch-off...", this, &MainWindow::zTouchOff);

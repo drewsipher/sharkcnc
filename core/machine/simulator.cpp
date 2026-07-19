@@ -64,11 +64,10 @@ void Simulator::loop() {
                 case 0x85: continue;  // jog cancel: nothing queued to cancel
                 default: break;
             }
-            if (c == '\n' || c == '\r') {
-                if (!acc.empty()) {
-                    execLine(acc);
-                    acc.clear();
-                }
+            if (c == '\r') continue;  // ignore CR; '\n' terminates a line
+            if (c == '\n') {
+                execLine(acc);  // real grbl acks blank lines too
+                acc.clear();
             } else {
                 acc.push_back(static_cast<char>(c));
             }

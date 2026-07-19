@@ -14,6 +14,7 @@ class QCheckBox;
 class QLabel;
 class QPushButton;
 class QTabWidget;
+class QComboBox;
 
 class CamPanel : public QWidget {
     Q_OBJECT
@@ -47,13 +48,16 @@ private:
     QLineEdit* gerberPath_;
     QString gerberText_, gerberName_;
     Clipper2Lib::PathsD copper_;
+    QComboBox* isoToolPick_;
     QDoubleSpinBox *isoTool_, *isoOverlap_, *isoDepth_, *isoTravel_, *isoFeed_,
         *isoPlunge_;
     QSpinBox *isoPasses_, *isoRpm_;
     QCheckBox* isoMirror_;
-    QLabel* isoSummary_;
+    QLabel *isoSummary_, *isoToolNote_;
     QPushButton *isoPreviewBtn_, *isoSendBtn_;
     QString isoGcode_;
+    void applyPickedTool();      // fills width/feed/rpm from the chosen tool
+    void refreshToolPicker();
 
     // drill
     QLineEdit* drillPath_;

@@ -18,6 +18,7 @@ public:
     void clearCopper();
     void setToolPosition(double x, double y);
     void fit();
+    void zoom(double factor);   // about the view centre
 
 protected:
     void paintEvent(QPaintEvent*) override;
