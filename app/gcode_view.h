@@ -3,6 +3,8 @@
 #pragma once
 #include <QWidget>
 
+#include <clipper2/clipper.h>
+
 #include "gcode/parser.h"
 
 class GcodeView : public QWidget {
@@ -12,6 +14,8 @@ public:
 
     void setProgram(const scnc::Program& p);
     void clearProgram();
+    void setCopper(const Clipper2Lib::PathsD& copper);  // translucent overlay
+    void clearCopper();
     void setToolPosition(double x, double y);
     void fit();
 
@@ -27,7 +31,7 @@ private:
     void rebuildCache();
 
     scnc::Program prog_;
-    QVector<QPolygonF> rapids_, cuts_;
+    QVector<QPolygonF> rapids_, cuts_, copper_;
     double scale_ = 4.0;         // px per mm
     QPointF center_{0, 0};       // mm at widget centre
     QPoint dragStart_;

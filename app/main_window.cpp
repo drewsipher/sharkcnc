@@ -23,7 +23,7 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 
-#include "cam_dialog.h"
+#include "cam_panel.h"
 #include "gcode/warp.h"
 #include "gcode_view.h"
 #include "machine_client.h"
@@ -42,6 +42,33 @@ MainWindow::MainWindow() {
     side->setFeatures(QDockWidget::DockWidgetMovable);
     side->setWidget(buildSidePanel());
     addDockWidget(Qt::LeftDockWidgetArea, side);
+
+    // integrated PCB CAM panel (right dock)
+    auto* camDock = new QDockWidget("PCB CAM", this);
+    camDock->setFeatures(QDockWidget::DockWidgetMovable |
+                         QDockWidget::DockWidgetClosable);
+    cam_ = new CamPanel(camDock);
+    camDock->setWidget(cam_);
+    addDockWidget(Qt::RightDockWidgetArea, camDock);
+    connect(cam_, &CamPanel::previewReady, this,
+            [this](const Clipper2Lib::PathsD& copper, const QString& gcode,
+                   const QString& title) {
+                program_ = parseGcode(gcode.toStdString());
+                programText_ = gcode;
+                view_->setProgram(program_);
+                view_->setCopper(copper);
+                setWindowTitle("SharkCNC - " + title + " (preview)");
+                statusBar()->showMessage(
+                    "CAM preview - adjust params, then Load into sender",
+                    4000);
+            });
+    connect(cam_, &CamPanel::sendToJob, this,
+            [this](const QString& gcode, const QString& title) {
+                loadProgramText(gcode, title);
+                view_->clearCopper();
+                statusBar()->showMessage("Loaded into sender - ready to Run",
+                                         5000);
+            });
 
     auto* consoleDock = new QDockWidget("Console", this);
     consoleDock->setFeatures(QDockWidget::DockWidgetMovable);
@@ -63,9 +90,10 @@ MainWindow::MainWindow() {
     auto* file = menuBar()->addMenu("&File");
     file->addAction("Open &G-code...", QKeySequence::Open, this,
                     &MainWindow::openGcode);
-    file->addAction("Open Ger&ber (isolation)...", this,
+    file->addAction("Open Ger&ber → CAM panel...", this,
                     &MainWindow::openGerber);
-    file->addAction("Open &Drill (Excellon)...", this, &MainWindow::openDrill);
+    file->addAction("Open &Drill → CAM panel...", this,
+                    &MainWindow::openDrill);
     file->addSeparator();
     file->addAction("&Save loaded G-code...", QKeySequence::Save, this,
                     &MainWindow::saveGcode);
@@ -172,6 +200,8 @@ void MainWindow::openPath(const QString& path) {
     loadProgramText(QString::fromUtf8(f.readAll()),
                     QFileInfo(path).fileName());
 }
+
+void MainWindow::openCamGerber(const QString& path) { cam_->loadGerber(path); }
 
 void MainWindow::autoConnectTcp(const QString& host, int port) {
     connType_->setCurrentIndex(0);
@@ -361,11 +391,7 @@ void MainWindow::openGerber() {
         this, "Open Gerber (copper layer)", s.value("dir/gerber").toString(),
         "Gerber (*.gbr *.gtl *.gbl *.g *.pho);;All files (*)");
     if (fn.isEmpty()) return;
-    s.setValue("dir/gerber", QFileInfo(fn).absolutePath());
-    CamDialog dlg(CamDialog::Mode::Isolation, fn, this);
-    if (dlg.exec() == QDialog::Accepted && dlg.hasGcode())
-        loadProgramText(dlg.gcode(),
-                        QFileInfo(fn).fileName() + " [isolation]");
+    cam_->loadGerber(fn);  // opens in the integrated CAM panel
 }
 
 void MainWindow::openDrill() {
@@ -374,10 +400,7 @@ void MainWindow::openDrill() {
         this, "Open Excellon drill", s.value("dir/gerber").toString(),
         "Excellon (*.drl *.xln *.txt);;All files (*)");
     if (fn.isEmpty()) return;
-    s.setValue("dir/gerber", QFileInfo(fn).absolutePath());
-    CamDialog dlg(CamDialog::Mode::Drill, fn, this);
-    if (dlg.exec() == QDialog::Accepted && dlg.hasGcode())
-        loadProgramText(dlg.gcode(), QFileInfo(fn).fileName() + " [drill]");
+    cam_->loadDrill(fn);
 }
 
 void MainWindow::saveGcode() {

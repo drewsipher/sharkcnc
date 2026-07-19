@@ -26,6 +26,23 @@ void GcodeView::clearProgram() {
     prog_ = Program{};
     rapids_.clear();
     cuts_.clear();
+    copper_.clear();
+    update();
+}
+
+void GcodeView::setCopper(const Clipper2Lib::PathsD& copper) {
+    copper_.clear();
+    for (const auto& path : copper) {
+        QPolygonF poly;
+        poly.reserve(static_cast<int>(path.size()));
+        for (const auto& pt : path) poly << QPointF(pt.x, -pt.y);
+        copper_ << poly;
+    }
+    update();
+}
+
+void GcodeView::clearCopper() {
+    copper_.clear();
     update();
 }
 
@@ -114,6 +131,18 @@ void GcodeView::paintEvent(QPaintEvent*) {
     p.translate(width() / 2.0, height() / 2.0);
     p.scale(scale_, scale_);
     p.translate(-center_.x(), -center_.y());
+
+    // copper first, underneath the toolpaths
+    if (!copper_.isEmpty()) {
+        p.setPen(QPen(QColor(184, 115, 51, 200), 0));  // copper edge
+        p.setBrush(QColor(184, 115, 51, 70));           // translucent fill
+        QPainterPath cp;
+        cp.setFillRule(Qt::OddEvenFill);
+        for (const auto& poly : copper_) cp.addPolygon(poly);
+        cp.closeSubpath();
+        p.drawPath(cp);
+        p.setBrush(Qt::NoBrush);
+    }
 
     QPen rapidPen(QColor(110, 110, 110, 150));
     rapidPen.setWidthF(0);

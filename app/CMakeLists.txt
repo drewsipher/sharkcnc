@@ -6,6 +6,6 @@ qt_add_executable(sharkcnc
   gcode_view.cpp
   main_window.cpp
   probe_dialog.cpp
-  cam_dialog.cpp
+  cam_panel.cpp
 )
 target_link_libraries(sharkcnc PRIVATE scnc_core Qt6::Widgets)

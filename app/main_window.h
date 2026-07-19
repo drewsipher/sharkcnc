@@ -5,6 +5,7 @@
 
 class MachineClient;
 class GcodeView;
+class CamPanel;
 class QLabel;
 class QPlainTextEdit;
 class QLineEdit;
@@ -20,6 +21,7 @@ public:
     MainWindow();
     void openPath(const QString& path);
     void autoConnectTcp(const QString& host, int port);
+    void openCamGerber(const QString& path);
 
 protected:
     void keyPressEvent(QKeyEvent* e) override;
@@ -43,6 +45,7 @@ private:
 
     MachineClient* mc_;
     GcodeView* view_;
+    CamPanel* cam_;
     scnc::Program program_;
     QString programText_;
 

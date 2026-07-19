@@ -15,6 +15,8 @@ int main(int argc, char** argv) {
     QCommandLineOption tcpOpt("tcp", "Connect to host:port on startup",
                               "host:port");
     cli.addOption(tcpOpt);
+    QCommandLineOption camGerberOpt("cam-gerber", "Preload a gerber into the CAM panel", "file");
+    cli.addOption(camGerberOpt);
     QCommandLineOption shotOpt("screenshot",
                                "Save a window capture after 3s and exit "
                                "(works with QT_QPA_PLATFORM=offscreen)",
@@ -25,6 +27,7 @@ int main(int argc, char** argv) {
     MainWindow w;
     if (!cli.positionalArguments().isEmpty())
         w.openPath(cli.positionalArguments().first());
+    if (cli.isSet(camGerberOpt)) w.openCamGerber(cli.value(camGerberOpt));
     if (cli.isSet(tcpOpt)) {
         QString hp = cli.value(tcpOpt);
         w.autoConnectTcp(hp.section(':', 0, 0),
