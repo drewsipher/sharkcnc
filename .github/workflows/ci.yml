@@ -12,7 +12,8 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build qt6-base-dev
+          sudo apt-get install -y ninja-build qt6-base-dev \
+            libgl1-mesa-dev libxcb-cursor0
       - name: Configure
         run: cmake --preset release
       - name: Build
@@ -31,4 +32,7 @@ jobs:
           ./build/tools/sharkcam info tests/fixtures/kicad_f_cu.gbr
           ./build/tools/sharkcam iso tests/fixtures/kicad_f_cu.gbr -o /tmp/iso.nc
           ./build/tools/sharkcam drill tests/fixtures/kicad_pth.drl -o /tmp/drill.nc
+          ./build/tools/sharkcam face -o /tmp/face.nc --w 40 --h 25
+          ./build/tools/sharkcam outline -o /tmp/cut.nc --w 40 --h 25 --tabs 4
           test -s /tmp/iso.nc && test -s /tmp/drill.nc
+          test -s /tmp/face.nc && test -s /tmp/cut.nc

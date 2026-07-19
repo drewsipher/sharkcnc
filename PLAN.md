@@ -194,12 +194,26 @@ CI, and the app is developable away from the shop.
 
 ### Delivered ahead of schedule (2026-07-19)
 
-- **Tool library** (planned for M4): `core/cam/tool.*` — type-aware tool
-  model with `widthAtDepth` (V-bit/chamfer isolation width from cut depth,
-  ball-nose sphere, flat constant), JSON persistence, editor dialog, and a
-  CAM isolation tool-picker that derives width/feed/speed from the chosen
-  tool. Next: per-operation tool assignment + "switch to tool T, Ø X"
-  prompts injected into multi-tool jobs (M4/M5).
+- **Tool library**: `core/cam/tool.*` — type-aware tool model with
+  `widthAtDepth` (V-bit/chamfer isolation width from cut depth, ball-nose
+  sphere, flat constant), JSON persistence, editor dialog, CAM isolation
+  tool-picker deriving width/feed/speed from the chosen tool.
+- **Facing / flattening** (M5): `core/cam/facing.*` — raster/spiral area
+  clearing, multi-pass; CLI `sharkcam face` + CAM "Face" tab.
+- **Board outline with tabs** (M4): `core/cam/outline.*` — offset cut,
+  multi-pass, N holding tabs; CLI `sharkcam outline` + CAM "Outline" tab.
+  Copper + drill + face + outline now cover a whole board.
+- **Tool-change prompts**: host-managed M0/M6 handling — the sender drains
+  motion, prompts with the tool message, resumes on click (multi-tool
+  drill jobs guide the operator through each change).
+- **3D view + STL import**: OpenGL 3.3 view (orbit/pan/zoom, ortho↔persp
+  toggle, Top/Front/Iso), STL stock/part rendering. 2D stays the PCB
+  default. Next 3D items: STEP import (OpenCASCADE, gated) and voxel cut
+  simulation.
+- **Job recovery**: `core/gcode/resume.*` — mid-job disconnect stashes the
+  cursor; reconnect offers a modal-state-preserving, safe-Z resume.
+- **UX**: unified dark theme, per-axis DRO with inline zeroing, colour-coded
+  jog with held-key continuous jog, drag-and-drop file loading.
 
 ### 3D view & cut simulation (future — M5+, explicitly deferred)
 
