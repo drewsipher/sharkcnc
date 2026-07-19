@@ -192,6 +192,37 @@ CI, and the app is developable away from the shop.
   job-recovery after disconnect, tool-change prompts, backlash compensation
   evaluation (grblHAL option vs. host-side).
 
+### Delivered ahead of schedule (2026-07-19)
+
+- **Tool library** (planned for M4): `core/cam/tool.*` — type-aware tool
+  model with `widthAtDepth` (V-bit/chamfer isolation width from cut depth,
+  ball-nose sphere, flat constant), JSON persistence, editor dialog, and a
+  CAM isolation tool-picker that derives width/feed/speed from the chosen
+  tool. Next: per-operation tool assignment + "switch to tool T, Ø X"
+  prompts injected into multi-tool jobs (M4/M5).
+
+### 3D view & cut simulation (future — M5+, explicitly deferred)
+
+The current preview is 2D (`QPainter`), which is correct for PCB/flat CAM
+and stays the default. 3D CAD import and a Blender-style camera are a
+separate, larger effort, sequenced so nothing half-built ships:
+
+- **3D toolpath view:** move rendering to `QOpenGLWidget`, draw the same
+  cached path geometry with a Z axis, add an arcball camera with an
+  **orthographic ↔ perspective** toggle. Medium effort; no new deps.
+- **3D model import:** STL first (trivial mesh loader) to place/verify stock
+  and fixtures; STEP later via OpenCASCADE (heavy dependency — gate behind a
+  build option). This is what "load in 3D CAD" needs.
+- **Material-removal (cut) simulation:** voxel or dexel field the toolpath
+  carves, using the tool-library geometry, to catch gouges/crashes before
+  cutting. Later still: time-accurate playback showing real feeds/speeds.
+  Depends on the tool library (done) and the 3D view.
+
+Rationale for deferring: the 2D view + tool library + probing + CAM deliver
+a complete PCB workflow now; 3D is essential for general 2.5D/3D CAD milling
+but adds a rendering stack and (for STEP) a big dependency that shouldn't
+block the board bring-up.
+
 Sequencing rationale: M0 de-risks hardware before any code exists; M1–M2 make
 the machine daily-usable (existing senders as fallback throughout); M3–M4
 deliver the differentiating PCB workflow; M5 generalizes CAM.
