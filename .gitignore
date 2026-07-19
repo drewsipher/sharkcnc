@@ -9,3 +9,5 @@ fp-info-cache
 _netlist.net
 sch_uuids.json
 __pycache__/
+# C++ build trees
+build*/
