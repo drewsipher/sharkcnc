@@ -28,7 +28,22 @@
 #include <QStackedWidget>
 #include <QDragEnterEvent>
 #include <QMimeData>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
 #include <QUrl>
+
+namespace {
+// True only when a real OpenGL context can be created. False on headless
+// (offscreen/minimal) or a broken GL driver, where QOpenGLWidget crashes.
+bool openglAvailable() {
+    QOpenGLContext ctx;
+    if (!ctx.create()) return false;
+    QOffscreenSurface surf;
+    surf.setFormat(ctx.format());
+    surf.create();
+    return surf.isValid() && ctx.makeCurrent(&surf);
+}
+}  // namespace
 
 #include "cam_panel.h"
 #include "gcode/resume.h"
@@ -46,10 +61,12 @@ MainWindow::MainWindow() {
     resize(1360, 920);
     mc_ = new MachineClient(this);
     view_ = new GcodeView(this);
-    view3d_ = new GcodeView3D(this);
     viewStack_ = new QStackedWidget(this);
     viewStack_->addWidget(view_);     // index 0 = 2D
-    viewStack_->addWidget(view3d_);   // index 1 = 3D
+    if (openglAvailable()) {          // 3D only where GL works
+        view3d_ = new GcodeView3D(this);
+        viewStack_->addWidget(view3d_);  // index 1 = 3D
+    }
     setCentralWidget(viewStack_);
 
     // side docks own the bottom corners, so they run full-height and the
@@ -135,26 +152,32 @@ MainWindow::MainWindow() {
     mode3d->setCheckable(true);
     mode3d->setShortcut(QKeySequence(Qt::Key_Tab));
     connect(mode3d, &QAction::toggled, this, [this](bool on) {
-        viewStack_->setCurrentIndex(on ? 1 : 0);
+        if (view3d_) viewStack_->setCurrentIndex(on ? 1 : 0);
     });
     auto* persp = view->addAction("&Perspective");
     persp->setCheckable(true);
     connect(persp, &QAction::toggled, this,
-            [this](bool on) { view3d_->setPerspective(on); });
+            [this](bool on) { if (view3d_) view3d_->setPerspective(on); });
     view->addSeparator();
     view->addAction("&Top", QKeySequence(Qt::Key_7), this, [this, mode3d] {
+        if (!view3d_) return;
         mode3d->setChecked(true);
         view3d_->viewTop();
     });
     view->addAction("&Front", QKeySequence(Qt::Key_1), this, [this, mode3d] {
+        if (!view3d_) return;
         mode3d->setChecked(true);
         view3d_->viewFront();
     });
     view->addAction("&Isometric", QKeySequence(Qt::Key_0), this,
                     [this, mode3d] {
+                        if (!view3d_) return;
                         mode3d->setChecked(true);
                         view3d_->viewIso();
                     });
+    // 3D controls are inert without an OpenGL context
+    if (!view3d_)
+        for (QAction* a : {mode3d, persp}) a->setEnabled(false);
     view->addSeparator();
     view->addAction("Zoom &in", QKeySequence::ZoomIn, this,
                     [this] { view_->zoom(1.25); });
@@ -162,7 +185,7 @@ MainWindow::MainWindow() {
                     [this] { view_->zoom(0.8); });
     view->addAction("&Fit", QKeySequence(Qt::Key_F), this, [this] {
         view_->fit();
-        view3d_->fit();
+        if (view3d_) view3d_->fit();
     });
 
     auto* tools = menuBar()->addMenu("&Tools");
@@ -224,7 +247,7 @@ MainWindow::MainWindow() {
                                         .arg(st.feed, 0, 'f', 0)
                                         .arg(st.speed, 0, 'f', 0));
                 view_->setToolPosition(st.wx, st.wy);
-                view3d_->setToolPosition(st.wx, st.wy, st.wz);
+                if (view3d_) view3d_->setToolPosition(st.wx, st.wy, st.wz);
             });
     connect(mc_, &MachineClient::lineReceived, this, [this](const QString& l) {
         if (!l.startsWith('<')) appendConsole(l, false);
@@ -573,7 +596,7 @@ void MainWindow::dropEvent(QDropEvent* e) {
         else if (ext == "drl" || ext == "xln")
             cam_->loadDrill(path);
         else if (ext == "stl") {
-            if (view3d_->loadStl(path)) viewStack_->setCurrentIndex(1);
+            if (view3d_ && view3d_->loadStl(path)) viewStack_->setCurrentIndex(1);
         } else  // .nc/.gcode/.ngc/.tap/.txt and anything else: treat as g-code
             openPath(path);
     }
@@ -670,7 +693,7 @@ void MainWindow::offerRecovery() {
 
 void MainWindow::showProgram(const scnc::Program& p) {
     view_->setProgram(p);
-    view3d_->setProgram(p);
+    if (view3d_) view3d_->setProgram(p);
 }
 
 void MainWindow::loadProgramText(const QString& text, const QString& title) {
@@ -684,9 +707,9 @@ void MainWindow::loadProgramText(const QString& text, const QString& title) {
             .arg(program_.segments.size()));
 }
 
-void MainWindow::loadStlPath(const QString& p) { view3d_->loadStl(p); }
+void MainWindow::loadStlPath(const QString& p) { if (view3d_) view3d_->loadStl(p); }
 
-void MainWindow::forceView3D() { viewStack_->setCurrentIndex(1); view3d_->viewIso(); }
+void MainWindow::forceView3D() { if (!view3d_) return; viewStack_->setCurrentIndex(1); view3d_->viewIso(); }
 
 void MainWindow::openStl() {
     QSettings s;
@@ -695,6 +718,11 @@ void MainWindow::openStl() {
         "STL mesh (*.stl);;All files (*)");
     if (fn.isEmpty()) return;
     s.setValue("dir/stl", QFileInfo(fn).absolutePath());
+    if (!view3d_) {
+        statusBar()->showMessage(
+            "3D view unavailable on this display (no OpenGL)", 5000);
+        return;
+    }
     if (view3d_->loadStl(fn)) {
         viewStack_->setCurrentIndex(1);  // jump to 3D
         statusBar()->showMessage("Loaded " + QFileInfo(fn).fileName() +
