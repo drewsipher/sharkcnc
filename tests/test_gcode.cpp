@@ -78,3 +78,51 @@ TEST_CASE("fmtNum trims zeros") {
     CHECK(scnc::fmtNum(-0.0001) == "-0.0001");
     CHECK(scnc::fmtNum(0.12345) == "0.1235");  // 4 decimals
 }
+
+#include "gcode/resume.h"
+
+TEST_CASE("resume replays modal state, lifts Z, continues") {
+    std::vector<std::string> job = {
+        "G21", "G90", "M3 S10000", "G0 X0 Y0", "G1 Z-0.06 F60",
+        "G1 X10 F120", "G1 X20", "G0 Z1"};
+    auto r = buildResumeJob(job, 6, 2.0);  // resume at "G1 X20"
+    REQUIRE(!r.empty());
+    // preamble present
+    bool hasUnits = false, hasDist = false, hasSpin = false, hasLift = false;
+    for (auto& l : r) {
+        if (l == "G21") hasUnits = true;
+        if (l == "G90") hasDist = true;
+        if (l.find("M3 S10000") != std::string::npos) hasSpin = true;
+        if (l.find("G0 Z2") != std::string::npos) hasLift = true;
+    }
+    CHECK(hasUnits);
+    CHECK(hasDist);
+    CHECK(hasSpin);
+    CHECK(hasLift);
+    // tail begins at the resume line and includes the rest
+    CHECK(r.back() == "G0 Z1");
+    CHECK(r[r.size() - 2] == "G1 X20");
+}
+
+TEST_CASE("resume respects inch/relative and spindle-off") {
+    std::vector<std::string> job = {"G20", "G91", "M3 S8000", "M5",
+                                    "G1 X1", "G1 X2"};
+    auto r = buildResumeJob(job, 5, 1.0);
+    bool inch = false, rel = false, spin = false;
+    for (auto& l : r) {
+        if (l == "G20") inch = true;
+        if (l == "G91") rel = true;
+        if (l.find("M3") != std::string::npos ||
+            l.find("M4") != std::string::npos)
+            spin = true;
+    }
+    CHECK(inch);
+    CHECK(rel);
+    CHECK_FALSE(spin);  // M5 cleared it
+}
+
+TEST_CASE("resume past the end is empty") {
+    std::vector<std::string> job = {"G0 X1", "G0 X2"};
+    CHECK(buildResumeJob(job, 2, 1.0).empty());
+    CHECK(buildResumeJob(job, 99, 1.0).empty());
+}

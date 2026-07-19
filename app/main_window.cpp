@@ -31,6 +31,7 @@
 #include <QUrl>
 
 #include "cam_panel.h"
+#include "gcode/resume.h"
 #include "gcode/warp.h"
 #include "gcode_view.h"
 #include "gcode_view3d.h"
@@ -179,6 +180,7 @@ MainWindow::MainWindow() {
     connect(mc_, &MachineClient::connected, this, [this](const QString& w) {
         connectBtn_->setText("Disconnect");
         statusBar()->showMessage("Connected: " + w);
+        offerRecovery();
     });
     connect(mc_, &MachineClient::connectionFailed, this,
             [this](const QString& w) {
@@ -187,7 +189,14 @@ MainWindow::MainWindow() {
     connect(mc_, &MachineClient::disconnected, this, [this] {
         connectBtn_->setText("Connect");
         stateLabel_->setText("OFFLINE");
+        stateLabel_->setStyleSheet(
+            "font-size:20px;font-weight:bold;color:#808080");
         statusBar()->showMessage("Disconnected");
+        if (jobActive_ && lastAcked_ < lastTotal_) {
+            stashRecovery();
+            statusBar()->showMessage(
+                "Connection lost mid-job - reconnect to recover", 0);
+        }
     });
     connect(mc_, &MachineClient::statusUpdated, this,
             [this](const scnc::Status& st) {
@@ -235,8 +244,13 @@ MainWindow::MainWindow() {
                 holdBtn_->setEnabled(running);
                 holdBtn_->setText(paused ? "Resume" : "Hold");
                 stopBtn_->setEnabled(running);
-                if (!running && acked == total && total > 0)
+                lastAcked_ = acked;
+                lastTotal_ = total;
+                jobActive_ = running;
+                if (!running && acked == total && total > 0) {
                     statusBar()->showMessage("Job complete", 10000);
+                    QSettings().remove("recovery");  // clean finish
+                }
             });
     connect(mc_, &MachineClient::toolChangeRequested, this,
             [this](const QString& msg) {
@@ -608,6 +622,50 @@ void MainWindow::doConnect() {
         mc_->connectTcp(hostEdit_->text(), portSpin_->value());
     else
         mc_->connectSerial(deviceEdit_->text(), baudSpin_->value());
+}
+
+void MainWindow::stashRecovery() {
+    if (programText_.isEmpty()) return;
+    QSettings s;
+    s.setValue("recovery/text", programText_);
+    s.setValue("recovery/line", lastAcked_);
+    s.setValue("recovery/total", lastTotal_);
+    s.setValue("recovery/title", windowTitle());
+}
+
+void MainWindow::offerRecovery() {
+    QSettings s;
+    QString text = s.value("recovery/text").toString();
+    int line = s.value("recovery/line").toInt();
+    int total = s.value("recovery/total").toInt();
+    if (text.isEmpty() || line <= 0 || line >= total) return;
+
+    QMessageBox box(this);
+    box.setWindowTitle("Recover interrupted job");
+    box.setIcon(QMessageBox::Warning);
+    box.setText(QString("<b>A job was interrupted at line %1 of %2.</b>")
+                    .arg(line)
+                    .arg(total));
+    box.setInformativeText(
+        "Re-home and re-zero to the SAME work origin first.\n\n"
+        "Resume replays units/spindle, lifts to Z+5, and continues from "
+        "line " + QString::number(line) +
+        ". Only do this if the workpiece hasn't moved.");
+    auto* resumeB = box.addButton("Resume from line " + QString::number(line),
+                                  QMessageBox::AcceptRole);
+    box.addButton("Discard", QMessageBox::RejectRole);
+    box.exec();
+    s.remove("recovery");
+    if (box.clickedButton() != resumeB) return;
+
+    std::vector<std::string> lines;
+    for (const auto& l : text.split('\n')) lines.push_back(l.toStdString());
+    auto resume = buildResumeJob(lines, static_cast<size_t>(line), 5.0);
+    QStringList out;
+    for (const auto& l : resume) out << QString::fromStdString(l);
+    loadProgramText(out.join('\n'), "recovered job");
+    statusBar()->showMessage(
+        "Recovery loaded - verify the preview, then Run", 8000);
 }
 
 void MainWindow::showProgram(const scnc::Program& p) {

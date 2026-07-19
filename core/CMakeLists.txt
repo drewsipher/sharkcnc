@@ -1,6 +1,7 @@
 add_library(scnc_core STATIC
   gcode/parser.cpp
   gcode/warp.cpp
+  gcode/resume.cpp
   heightmap/heightmap.cpp
   machine/grbl_driver.cpp
   machine/simulator.cpp

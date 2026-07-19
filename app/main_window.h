@@ -91,6 +91,10 @@ private:
     // job
     QPushButton *runBtn_, *holdBtn_, *stopBtn_;
     QProgressBar* jobBar_;
+    int lastAcked_ = 0, lastTotal_ = 0;
+    bool jobActive_ = false;
+    void stashRecovery();
+    void offerRecovery();
 
     QPlainTextEdit* console_;
     QLineEdit* cmdEdit_;
