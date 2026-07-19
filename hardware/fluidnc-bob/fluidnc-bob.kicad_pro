@@ -76,7 +76,16 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        [
+          "silk_edge_clearance|21102000|75200000|5f3e9b3c-3489-449d-b997-19fd337c3765|99a77847-f8af-4d12-b3eb-53af1fb90621",
+          ""
+        ],
+        [
+          "silk_edge_clearance|49002000|75200000|5f3e9b3c-3489-449d-b997-19fd337c3765|0924ebee-6e44-4578-afdb-98202b0d6e1f",
+          ""
+        ]
+      ],
       "meta": {
         "version": 2
       },
@@ -146,7 +155,7 @@
       },
       "rules": {
         "max_error": 0.005,
-        "min_clearance": 0.4,
+        "min_clearance": 0.1,
         "min_connection": 0.0,
         "min_copper_edge_clearance": 0.5,
         "min_groove_width": 0.0,
@@ -159,8 +168,8 @@
         "min_text_height": 0.8,
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.3,
-        "min_track_width": 0.3,
-        "min_via_annular_width": 0.3,
+        "min_track_width": 0.1,
+        "min_via_annular_width": 0.15,
         "min_via_diameter": 0.25,
         "solder_mask_to_copper_clearance": 0.0,
         "use_height_for_length_calcs": true
@@ -242,10 +251,6 @@
         {
           "diameter": 0.0,
           "drill": 0.0
-        },
-        {
-          "diameter": 1.8,
-          "drill": 0.9
         }
       ],
       "zones_allow_external_fillets": false
@@ -541,7 +546,7 @@
     "last_paths": {
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "/home/drew/src/sharkcnc/hardware/fluidnc-bob/gerbers/",
       "specctra_dsn": "",
       "vrml": ""
     },
@@ -673,7 +678,7 @@
         "uuid": "90005a82-a137-521e-8a64-2e75a611a04d"
       }
     ],
-    "used_designators": "J9,J12-15,R16,#PWR1-3,#PWR16-18,#PWR26,#PWR39-40",
+    "used_designators": "H1-4,J9,J12-15,R16,#PWR1-3,#PWR16-18,#PWR26,#PWR39-40",
     "variants": []
   },
   "sheets": [
