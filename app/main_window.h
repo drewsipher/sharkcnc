@@ -42,6 +42,8 @@ private slots:
 
 protected:
     void keyReleaseEvent(QKeyEvent* e) override;
+    void dragEnterEvent(QDragEnterEvent* e) override;
+    void dropEvent(QDropEvent* e) override;
 
 private:
     void loadProgramText(const QString& text, const QString& title);

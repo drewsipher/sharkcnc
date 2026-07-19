@@ -26,6 +26,9 @@
 #include <QVBoxLayout>
 
 #include <QStackedWidget>
+#include <QDragEnterEvent>
+#include <QMimeData>
+#include <QUrl>
 
 #include "cam_panel.h"
 #include "gcode/warp.h"
@@ -258,6 +261,8 @@ MainWindow::MainWindow() {
         mc_->sendCommand(cmd);
         cmdEdit_->clear();
     });
+
+    setAcceptDrops(true);
 
     QSettings s;
     hostEdit_->setText(s.value("conn/host", "fluidnc.local").toString());
@@ -538,6 +543,27 @@ void MainWindow::keyReleaseEvent(QKeyEvent* e) {
         return;
     }
     QMainWindow::keyReleaseEvent(e);
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent* e) {
+    if (e->mimeData()->hasUrls()) e->acceptProposedAction();
+}
+
+void MainWindow::dropEvent(QDropEvent* e) {
+    for (const QUrl& url : e->mimeData()->urls()) {
+        QString path = url.toLocalFile();
+        if (path.isEmpty()) continue;
+        QString ext = QFileInfo(path).suffix().toLower();
+        if (ext == "gbr" || ext == "gtl" || ext == "gbl" || ext == "pho")
+            cam_->loadGerber(path);
+        else if (ext == "drl" || ext == "xln")
+            cam_->loadDrill(path);
+        else if (ext == "stl") {
+            if (view3d_->loadStl(path)) viewStack_->setCurrentIndex(1);
+        } else  // .nc/.gcode/.ngc/.tap/.txt and anything else: treat as g-code
+            openPath(path);
+    }
+    e->acceptProposedAction();
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* e) {
