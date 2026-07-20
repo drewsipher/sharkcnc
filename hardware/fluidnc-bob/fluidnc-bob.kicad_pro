@@ -524,7 +524,7 @@
     "last_paths": {
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "/home/drew/src/sharkcnc/hardware/fluidnc-bob/gerbers/",
       "specctra_dsn": "",
       "vrml": ""
     },
