@@ -99,6 +99,7 @@ IsolationResult isolationRoute(const GerberLayer& layer,
         walk(&tree);
         copper.swap(cleaned);
     }
+    res.cleanedCopper = copper;
 
     PathsD all;
     for (int pass = 0; pass < std::max(1, opt.passes); ++pass) {

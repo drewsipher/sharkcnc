@@ -28,8 +28,9 @@ struct IsolationResult {
     bool ok = false;
     std::string error;
     std::string gcode;
-    Clipper2Lib::PathsD toolpaths;  // for preview
-    double lengthMm = 0;            // total cutting length
+    Clipper2Lib::PathsD toolpaths;     // for preview
+    Clipper2Lib::PathsD cleanedCopper; // copper after merge + hole fill
+    double lengthMm = 0;               // total cutting length
 };
 
 IsolationResult isolationRoute(const GerberLayer& layer,

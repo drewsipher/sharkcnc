@@ -534,12 +534,10 @@ void CamPanel::regenIso() {
                              .arg(g.layer.maxY - g.layer.minY, 0, 'f', 1)
                              .arg(warn));
 
-    // when mirrored, show copper mirrored too so the preview matches
-    Clipper2Lib::PathsD shownCopper = copper_;
-    if (opt.mirrorX)
-        for (auto& p : shownCopper)
-            for (auto& pt : p) pt.x = -pt.x;
-    emit previewReady(shownCopper, isoGcode_, gerberName_ + " [isolation]");
+    // show the cleaned copper (merged, drill holes filled) so the overlay
+    // matches exactly what the toolpaths isolate
+    emit previewReady(iso.cleanedCopper, isoGcode_,
+                      gerberName_ + " [isolation]");
 }
 
 void CamPanel::regenDrill() {
