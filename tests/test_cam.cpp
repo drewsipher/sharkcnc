@@ -398,3 +398,31 @@ TEST_CASE("isolation keeps a small clearance that contains an isolated pad") {
                 padIsolated = true;
     CHECK(padIsolated);
 }
+
+TEST_CASE("real poured board: pads stay solid (no cross-category voids)") {
+    // Regression for the keyhole bug: flashes and regions came out with
+    // opposite windings, so a pad drawn as both a flash and covered by the
+    // pour region cancelled into a void. Parse the real board and check a
+    // known pad centre is solid copper with no tiny hole punched in it.
+    auto text = readFixture("board_pour_F_Cu.gbr");
+    auto g = parseGerber(text);
+    REQUIRE(g.ok);
+    // The bug punched keyhole voids into pads, which isolation then traced as
+    // extra inner loops. Count small interior voids (the drill/via holes are
+    // legitimately a handful; the bug added ~150 pad voids) - there should be
+    // very few, and isolation shouldn't explode into spurious loops.
+    int smallVoids = 0;
+    for (const auto& p : g.layer.copper)
+        if (Clipper2Lib::Area(p) < 0) {
+            auto b = Clipper2Lib::GetBounds(Clipper2Lib::PathsD{p});
+            if (std::max(b.Width(), b.Height()) < 2.0) ++smallVoids;
+        }
+    // ~47 legit drill holes (44-pin socket etc.); the bug added ~150 more
+    CHECK(smallVoids < 80);
+
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    auto iso = isolationRoute(g.layer, o);
+    REQUIRE(iso.ok);
+    CHECK(iso.toolpaths.size() < 160);  // was 264+ with the void bug
+}

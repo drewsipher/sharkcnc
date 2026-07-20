@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <optional>
@@ -304,16 +305,38 @@ GerberResult parseGerber(const std::string& text) {
 
     bool inRegion = false;
     PathD regionPath;
-    PathsD regionAcc;
 
+    // Primitive categories (flashes, strokes, regions) can come out of
+    // primitive generation with opposite windings. Unioning them all raw in
+    // one NonZero pass makes overlaps between categories *cancel* into voids
+    // (e.g. a pad flash over the same pad drawn as a region). Union each
+    // category on its own first - Clipper normalises the winding - then
+    // combine the clean, consistently-wound results.
     bool dark = true;            // LPD
-    PathsD darkAcc, result;
+    PathsD flashAcc, strokeAcc, regionAcc, result;
+    auto combineDark = [&]() -> PathsD {
+        PathsD all = Union(flashAcc, FillRule::NonZero);
+        PathsD s = Union(strokeAcc, FillRule::NonZero);
+        PathsD r = Union(regionAcc, FillRule::NonZero);
+        all.insert(all.end(), s.begin(), s.end());
+        all.insert(all.end(), r.begin(), r.end());
+        return Union(all, FillRule::NonZero);
+    };
+    auto darkEmpty = [&] {
+        return flashAcc.empty() && strokeAcc.empty() && regionAcc.empty();
+    };
+    auto clearDark = [&] {
+        flashAcc.clear();
+        strokeAcc.clear();
+        regionAcc.clear();
+    };
     auto flushPolarity = [&](bool newDark) {
         if (dark == newDark) return;
-        if (!darkAcc.empty()) {
-            result = dark ? Union(result, darkAcc, FillRule::NonZero)
-                          : Difference(result, darkAcc, FillRule::NonZero);
-            darkAcc.clear();
+        if (!darkEmpty()) {
+            PathsD d = combineDark();
+            result = dark ? Union(result, d, FillRule::NonZero)
+                          : Difference(result, d, FillRule::NonZero);
+            clearDark();
         }
         dark = newDark;
     };
@@ -354,7 +377,7 @@ GerberResult parseGerber(const std::string& text) {
         if (dia <= 0) dia = 0.01;
         if (interp == 1) {
             auto s = stadium(cx, cy, nx, ny, dia);
-            darkAcc.insert(darkAcc.end(), s.begin(), s.end());
+            strokeAcc.insert(strokeAcc.end(), s.begin(), s.end());
         } else {
             // arc stroke: tessellate then inflate polyline
             double ccx = cx + ci, ccy = cy + cj;
@@ -377,7 +400,7 @@ GerberResult parseGerber(const std::string& text) {
             }
             auto s = InflatePaths(PathsD{arc}, dia / 2, JoinType::Round,
                                   EndType::Round, 2.0, 4);
-            darkAcc.insert(darkAcc.end(), s.begin(), s.end());
+            strokeAcc.insert(strokeAcc.end(), s.begin(), s.end());
         }
         ++L.strokes;
     };
@@ -470,7 +493,7 @@ GerberResult parseGerber(const std::string& text) {
         if (st == "G37") {
             inRegion = false;
             if (regionPath.size() >= 3) {
-                darkAcc.push_back(regionPath);
+                regionAcc.push_back(regionPath);
                 ++L.regions;
             }
             regionPath.clear();
@@ -550,7 +573,7 @@ GerberResult parseGerber(const std::string& text) {
                 break;
             case 2:  // move
                 if (inRegion && regionPath.size() >= 3) {
-                    darkAcc.push_back(regionPath);
+                    regionAcc.push_back(regionPath);
                     ++L.regions;
                     regionPath.clear();
                 }
@@ -560,7 +583,7 @@ GerberResult parseGerber(const std::string& text) {
                 auto it = apertures.find(currentAp);
                 if (it != apertures.end()) {
                     auto f = translated(it->second.fill, nx, ny);
-                    darkAcc.insert(darkAcc.end(), f.begin(), f.end());
+                    flashAcc.insert(flashAcc.end(), f.begin(), f.end());
                     ++L.flashes;
                 }
                 cx = nx; cy = ny;
@@ -573,9 +596,10 @@ GerberResult parseGerber(const std::string& text) {
     }
 
     // final polarity flush + union
-    if (!darkAcc.empty()) {
-        result = dark ? Union(result, darkAcc, FillRule::NonZero)
-                      : Difference(result, darkAcc, FillRule::NonZero);
+    if (!darkEmpty()) {
+        PathsD d = combineDark();
+        result = dark ? Union(result, d, FillRule::NonZero)
+                      : Difference(result, d, FillRule::NonZero);
     }
     L.copper = SimplifyPaths(result, 0.001);
     if (!L.copper.empty()) {
