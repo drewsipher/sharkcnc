@@ -18,6 +18,10 @@ struct IsolationOptions {
     double plunge = 60;          // mm/min plunging
     int spindleRpm = 10000;      // S word (0 = omit)
     bool mirrorX = false;        // for bottom layers: x -> -x
+    // Fill interior copper voids smaller than this (max bbox dimension, mm)
+    // so drill/via holes aren't isolated; larger voids (pour clearances)
+    // are kept. 0 disables hole filling.
+    double fillHolesBelow = 2.5;
 };
 
 struct IsolationResult {

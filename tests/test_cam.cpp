@@ -317,3 +317,54 @@ TEST_CASE("outline with no tabs is a clean loop") {
     CHECK(r.gcode.find("Z-1.3") == std::string::npos);
     CHECK(r.toolpaths.size() == 1);
 }
+
+TEST_CASE("isolation fills small pad/via holes but keeps big voids") {
+    // a 2mm pad with a 0.8mm drill hole
+    const char* padWithHole = R"(%FSLAX46Y46*%
+%MOMM*%
+%ADD10C,2.000000X0.800000*%
+D10*
+X0Y0D03*
+M02*
+)";
+    auto g = parseGerber(padWithHole);
+    REQUIRE(g.ok);
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    o.passes = 1;
+
+    o.fillHolesBelow = 2.0;  // fill the 0.8mm hole
+    auto filled = isolationRoute(g.layer, o);
+    REQUIRE(filled.ok);
+    CHECK(filled.toolpaths.size() == 1);  // only the outer boundary
+
+    o.fillHolesBelow = 0.0;  // isolate the hole too (old behaviour)
+    auto notFilled = isolationRoute(g.layer, o);
+    REQUIRE(notFilled.ok);
+    CHECK(notFilled.toolpaths.size() == 2);  // outer + inner ring
+}
+
+TEST_CASE("isolation merges a pad and its trace into one outline") {
+    // two pads joined by a trace, same net -> one connected region
+    const char* padTracePad = R"(%FSLAX46Y46*%
+%MOMM*%
+%ADD10C,2.000000*%
+%ADD11C,0.400000*%
+D10*
+X0Y0D03*
+X8000000Y0D03*
+D11*
+X0Y0D02*
+X8000000Y0D01*
+M02*
+)";
+    auto g = parseGerber(padTracePad);
+    REQUIRE(g.ok);
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    o.passes = 1;
+    auto iso = isolationRoute(g.layer, o);
+    REQUIRE(iso.ok);
+    // pad+trace+pad is one region -> a single outer isolation loop
+    CHECK(iso.toolpaths.size() == 1);
+}

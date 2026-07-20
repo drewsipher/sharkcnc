@@ -64,28 +64,13 @@
           "min_island_area": 10.0,
           "min_thickness": 0.25,
           "pad_connection": 1,
-          "remove_islands": 1,
+          "remove_islands": 0,
           "thermal_relief_gap": 0.5,
           "thermal_relief_spoke_width": 0.5
         }
       },
-      "diff_pair_dimensions": [
-        {
-          "gap": 0.0,
-          "via_gap": 0.0,
-          "width": 0.0
-        }
-      ],
-      "drc_exclusions": [
-        [
-          "silk_edge_clearance|21102000|75200000|5f3e9b3c-3489-449d-b997-19fd337c3765|99a77847-f8af-4d12-b3eb-53af1fb90621",
-          ""
-        ],
-        [
-          "silk_edge_clearance|49002000|75200000|5f3e9b3c-3489-449d-b997-19fd337c3765|0924ebee-6e44-4578-afdb-98202b0d6e1f",
-          ""
-        ]
-      ],
+      "diff_pair_dimensions": [],
+      "drc_exclusions": [],
       "meta": {
         "version": 2
       },
@@ -155,7 +140,7 @@
       },
       "rules": {
         "max_error": 0.005,
-        "min_clearance": 0.1,
+        "min_clearance": 0.0,
         "min_connection": 0.0,
         "min_copper_edge_clearance": 0.5,
         "min_groove_width": 0.0,
@@ -168,9 +153,9 @@
         "min_text_height": 0.8,
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.3,
-        "min_track_width": 0.1,
-        "min_via_annular_width": 0.15,
-        "min_via_diameter": 0.25,
+        "min_track_width": 0.2,
+        "min_via_annular_width": 0.1,
+        "min_via_diameter": 0.5,
         "solder_mask_to_copper_clearance": 0.0,
         "use_height_for_length_calcs": true
       },
@@ -218,9 +203,7 @@
           "td_width_to_size_filter_ratio": 0.9
         }
       ],
-      "track_widths": [
-        0.0
-      ],
+      "track_widths": [],
       "tuning_pattern_settings": {
         "diff_pair_defaults": {
           "corner_radius_percentage": 80,
@@ -247,12 +230,7 @@
           "spacing": 0.6
         }
       },
-      "via_dimensions": [
-        {
-          "diameter": 0.0,
-          "drill": 0.0
-        }
-      ],
+      "via_dimensions": [],
       "zones_allow_external_fillets": false
     },
     "ipc2581": {
@@ -262,7 +240,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": "C"
+      "sch_revision": ""
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -546,7 +524,7 @@
     "last_paths": {
       "idf": "",
       "netlist": "",
-      "plot": "/home/drew/src/sharkcnc/hardware/fluidnc-bob/gerbers/",
+      "plot": "",
       "specctra_dsn": "",
       "vrml": ""
     },
@@ -675,18 +653,13 @@
       {
         "filename": "fluidnc-bob.kicad_sch",
         "name": "fluidnc-bob",
-        "uuid": "90005a82-a137-521e-8a64-2e75a611a04d"
+        "uuid": "00000000-0000-0000-0000-000000000000"
       }
     ],
-    "used_designators": "H1-4,J9,J12-15,R16,#PWR1-3,#PWR16-18,#PWR26,#PWR39-40",
+    "used_designators": "R16,#PWR1-2",
     "variants": []
   },
-  "sheets": [
-    [
-      "90005a82-a137-521e-8a64-2e75a611a04d",
-      "fluidnc-bob"
-    ]
-  ],
+  "sheets": [],
   "text_variables": {},
   "tuning_profiles": {
     "meta": {

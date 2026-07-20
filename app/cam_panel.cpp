@@ -75,6 +75,11 @@ QWidget* CamPanel::buildIsoTab() {
     isoRpm_ = new QSpinBox;
     isoRpm_->setRange(0, 60000);
     isoRpm_->setValue(10000);
+    isoFillHoles_ = mkD(2.5, 0.0, 20, 0.5);
+    isoFillHoles_->setToolTip(
+        "Fill copper voids smaller than this (drill/via holes) so they "
+        "aren't milled; larger voids like pour clearances are kept. 0 = "
+        "isolate every hole.");
     isoMirror_ = new QCheckBox("Mirror X (bottom copper)");
     form->addRow("Tool", isoToolPick_);
     form->addRow("Width Ø mm", isoTool_);
@@ -86,6 +91,7 @@ QWidget* CamPanel::buildIsoTab() {
     form->addRow("Feed mm/min", isoFeed_);
     form->addRow("Plunge mm/min", isoPlunge_);
     form->addRow("Spindle RPM", isoRpm_);
+    form->addRow("Fill holes < mm", isoFillHoles_);
     form->addRow(isoMirror_);
     lay->addLayout(form);
 
@@ -103,7 +109,7 @@ QWidget* CamPanel::buildIsoTab() {
 
     connect(browse, &QPushButton::clicked, this, &CamPanel::browseGerber);
     for (auto* s : {isoTool_, isoOverlap_, isoDepth_, isoTravel_, isoFeed_,
-                    isoPlunge_})
+                    isoPlunge_, isoFillHoles_})
         connect(s, &QDoubleSpinBox::valueChanged, this, &CamPanel::regenIso);
     connect(isoPasses_, &QSpinBox::valueChanged, this, &CamPanel::regenIso);
     connect(isoRpm_, &QSpinBox::valueChanged, this, &CamPanel::regenIso);
@@ -507,6 +513,7 @@ void CamPanel::regenIso() {
     opt.plunge = isoPlunge_->value();
     opt.spindleRpm = isoRpm_->value();
     opt.mirrorX = isoMirror_->isChecked();
+    opt.fillHolesBelow = isoFillHoles_->value();
     auto iso = isolationRoute(g.layer, opt);
     if (!iso.ok) {
         isoSummary_->setText("Isolation error: " +

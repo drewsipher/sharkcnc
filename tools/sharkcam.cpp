@@ -60,7 +60,7 @@ int usage() {
         "  sharkcam iso <front.gbr> -o <out.nc>\n"
         "      --tool <mm=0.2> --passes <n=1> --overlap <0..1=0.5>\n"
         "      --depth <mm=-0.06> --travel <mm=1> --feed <mm/min=120>\n"
-        "      --plunge <mm/min=60> --rpm <n=10000> --mirror\n"
+        "      --plunge <mm/min=60> --rpm <n=10000> --mirror --fill-holes <mm=2.5>\n"
         "\n"
         "  sharkcam drill <board.drl> -o <out.nc>\n"
         "      --depth <mm=-1.8> --travel <mm=2> --plunge <mm/min=90>\n"
@@ -201,6 +201,7 @@ int main(int argc, char** argv) {
         opt.plunge = argD(argc, argv, "--plunge", opt.plunge);
         opt.spindleRpm = argI(argc, argv, "--rpm", opt.spindleRpm);
         opt.mirrorX = argB(argc, argv, "--mirror");
+        opt.fillHolesBelow = argD(argc, argv, "--fill-holes", opt.fillHolesBelow);
         auto iso = isolationRoute(g.layer, opt);
         if (!iso.ok) {
             std::fprintf(stderr, "isolation error: %s\n", iso.error.c_str());

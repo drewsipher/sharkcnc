@@ -57,7 +57,7 @@ private:
     Clipper2Lib::PathsD copper_;
     QComboBox* isoToolPick_;
     QDoubleSpinBox *isoTool_, *isoOverlap_, *isoDepth_, *isoTravel_, *isoFeed_,
-        *isoPlunge_;
+        *isoPlunge_, *isoFillHoles_;
     QSpinBox *isoPasses_, *isoRpm_;
     QCheckBox* isoMirror_;
     QLabel *isoSummary_, *isoToolNote_;

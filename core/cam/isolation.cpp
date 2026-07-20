@@ -73,6 +73,26 @@ IsolationResult isolationRoute(const GerberLayer& layer,
     PathsD copper = layer.copper;
     if (opt.mirrorX) mirror(copper);
 
+    // Clean topology: merge overlapping copper so a pad and the trace(s)
+    // running into it become one region (otherwise the offset outlines each
+    // and mills between them, severing the pad).
+    copper = Union(copper, FillRule::NonZero);
+
+    // Drop small interior voids (drill/via holes) so isolation doesn't trace
+    // them; keep large voids such as ground-pour clearances.
+    if (opt.fillHolesBelow > 0) {
+        PathsD kept;
+        for (const auto& p : copper) {
+            if (Area(p) < 0) {  // a hole (opposite winding)
+                auto b = GetBounds(PathsD{p});
+                if (std::max(b.Width(), b.Height()) < opt.fillHolesBelow)
+                    continue;  // fill it in
+            }
+            kept.push_back(p);
+        }
+        copper.swap(kept);
+    }
+
     PathsD all;
     for (int pass = 0; pass < std::max(1, opt.passes); ++pass) {
         double off = opt.toolDiameter / 2 +
