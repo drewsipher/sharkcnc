@@ -368,3 +368,33 @@ M02*
     // pad+trace+pad is one region -> a single outer isolation loop
     CHECK(iso.toolpaths.size() == 1);
 }
+
+TEST_CASE("isolation keeps a small clearance that contains an isolated pad") {
+    // a ground pour with a small clearance gap around an isolated pad on a
+    // different net. The clearance is small (<fillHolesBelow) but must be
+    // KEPT because it surrounds copper - filling it would short the pad to
+    // the pour. (The old area/size-only filter got this wrong.)
+    GerberLayer L;
+    L.copper.push_back({{0, 0}, {20, 0}, {20, 20}, {0, 20}});     // pour (CCW)
+    // clearance gap 2.2mm across, wound as a hole (CW). Smaller than the
+    // 2.5mm fill threshold, so a naive size filter would delete it.
+    L.copper.push_back({{8.9, 8.9}, {8.9, 11.1}, {11.1, 11.1}, {11.1, 8.9}});
+    L.copper.push_back({{9.4, 9.4}, {10.6, 9.4}, {10.6, 10.6},
+                        {9.4, 10.6}});                            // isolated pad
+    L.minX = 0; L.minY = 0; L.maxX = 20; L.maxY = 20;
+
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    o.passes = 1;
+    o.fillHolesBelow = 2.5;  // > the clearance size, but it has a pad inside
+    auto iso = isolationRoute(L, o);
+    REQUIRE(iso.ok);
+    // pour outer + clearance + pad => 3 loops; the pad must still be isolated
+    CHECK(iso.toolpaths.size() == 3);
+    bool padIsolated = false;
+    for (const auto& path : iso.toolpaths)
+        for (const auto& pt : path)
+            if (std::abs(pt.x - 10) < 2 && std::abs(pt.y - 10) < 2)
+                padIsolated = true;
+    CHECK(padIsolated);
+}

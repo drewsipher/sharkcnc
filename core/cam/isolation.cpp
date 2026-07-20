@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 
 #include "gcode_out.h"
 #include "../gcode/parser.h"
@@ -73,24 +74,30 @@ IsolationResult isolationRoute(const GerberLayer& layer,
     PathsD copper = layer.copper;
     if (opt.mirrorX) mirror(copper);
 
-    // Clean topology: merge overlapping copper so a pad and the trace(s)
-    // running into it become one region (otherwise the offset outlines each
-    // and mills between them, severing the pad).
-    copper = Union(copper, FillRule::NonZero);
-
-    // Drop small interior voids (drill/via holes) so isolation doesn't trace
-    // them; keep large voids such as ground-pour clearances.
-    if (opt.fillHolesBelow > 0) {
-        PathsD kept;
-        for (const auto& p : copper) {
-            if (Area(p) < 0) {  // a hole (opposite winding)
-                auto b = GetBounds(PathsD{p});
-                if (std::max(b.Width(), b.Height()) < opt.fillHolesBelow)
-                    continue;  // fill it in
+    // Rebuild the copper as a nesting tree so we can tell a *drill hole* (an
+    // enclosed void with no copper island inside it) from a *pour clearance*
+    // (a void that surrounds an isolated pad/trace). Both can be small, so
+    // size alone can't distinguish them - topology does.
+    {
+        ClipperD cl;
+        cl.AddSubject(copper);
+        PolyTreeD tree;
+        cl.Execute(ClipType::Union, FillRule::NonZero, tree);
+        PathsD cleaned;
+        std::function<void(const PolyPathD*)> walk = [&](const PolyPathD* node) {
+            for (size_t i = 0; i < node->Count(); ++i) {
+                const PolyPathD* ch = node->Child(i);
+                bool fill = false;
+                if (ch->IsHole() && ch->Count() == 0 && opt.fillHolesBelow > 0) {
+                    auto b = GetBounds(PathsD{ch->Polygon()});
+                    fill = std::max(b.Width(), b.Height()) < opt.fillHolesBelow;
+                }
+                if (!fill) cleaned.push_back(ch->Polygon());
+                walk(ch);  // childless holes have no subtree, so this is safe
             }
-            kept.push_back(p);
-        }
-        copper.swap(kept);
+        };
+        walk(&tree);
+        copper.swap(cleaned);
     }
 
     PathsD all;
