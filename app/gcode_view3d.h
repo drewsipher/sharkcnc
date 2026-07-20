@@ -8,6 +8,7 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLWidget>
+#include <QQuaternion>
 #include <QVector3D>
 
 #include "gcode/parser.h"
@@ -45,6 +46,7 @@ private:
                      const std::vector<float>& data, int& count);
     QMatrix4x4 projection() const;
     QMatrix4x4 modelView() const;
+    QVector3D arcballVector(QPoint p) const;   // screen -> unit sphere
 
     scnc::Program prog_;
 
@@ -58,8 +60,10 @@ private:
     bool buffersDirty_ = false, gridDirty_ = true, meshDirty_ = false;
     std::vector<float> meshData_;   // pos+normal, uploaded lazily in paintGL
 
-    // camera
-    float yaw_ = 0.6f, pitch_ = 0.9f;   // radians
+    // camera: quaternion arcball orientation of the scene
+    QQuaternion rot_;
+    QQuaternion rotStart_;
+    QVector3D arcStart_;
     float dist_ = 120.0f;
     QVector3D target_{0, 0, 0};
     bool perspective_ = false;

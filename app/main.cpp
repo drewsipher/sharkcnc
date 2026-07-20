@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
     cli.addOption(camGerberOpt);
     QCommandLineOption toolDlgOpt("tool-dialog", "Open the tool library dialog (debug)");
     QCommandLineOption v3dOpt("view3d", "Start in 3D view (debug)");
+    QCommandLineOption v3pOpt("v3d-preset","3D preset top/front/iso (debug)","p"); cli.addOption(v3pOpt);
     QCommandLineOption stlOpt("stl", "Load an STL on startup (debug)", "file");
     cli.addOption(stlOpt);
     cli.addOption(v3dOpt);
@@ -86,6 +87,7 @@ int main(int argc, char** argv) {
     }
     if (cli.isSet(stlOpt)) w.loadStlPath(cli.value(stlOpt));
     if (cli.isSet(v3dOpt)) w.forceView3D();
+    if (cli.isSet(v3pOpt)) w.setView3DPreset(cli.value(v3pOpt));
     w.show();
     QDialog* dbgDlg = nullptr;
     if (cli.isSet(toolDlgOpt)) { dbgDlg = new ToolDialog(&w); dbgDlg->show(); }

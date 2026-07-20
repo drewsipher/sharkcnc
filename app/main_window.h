@@ -26,6 +26,7 @@ public:
     void openCamGerber(const QString& path);
     void forceView3D();
     void loadStlPath(const QString& p);
+    void setView3DPreset(const QString& p);
 
 protected:
     void keyPressEvent(QKeyEvent* e) override;

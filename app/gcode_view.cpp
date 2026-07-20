@@ -110,15 +110,26 @@ void GcodeView::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, scale_ > 1.0);
 
-    // grid every 10mm
-    p.setPen(QColor(44, 48, 52));
-    double step = 10.0 * scale_;
-    if (step > 8) {
+    // adaptive decade grid: a coarse level that's always visible plus a
+    // finer level (coarse/10) that fades out as it gets dense
+    {
+        // smallest power of ten whose spacing is >= ~60 px on screen
+        double coarse = std::pow(10.0, std::ceil(std::log10(60.0 / scale_)));
+        double fine = coarse / 10.0;
+        double finePx = fine * scale_;
+        double fineAlpha = std::clamp((finePx - 5.0) / 15.0, 0.0, 1.0);
         QPointF o = toScreen(0, 0);
-        for (double x = std::fmod(o.x(), step); x < width(); x += step)
-            p.drawLine(QPointF(x, 0), QPointF(x, height()));
-        for (double y = std::fmod(o.y(), step); y < height(); y += step)
-            p.drawLine(QPointF(0, y), QPointF(width(), y));
+        auto drawGrid = [&](double stepMm, int alpha) {
+            if (alpha <= 0) return;
+            double step = stepMm * scale_;
+            p.setPen(QColor(90, 96, 104, alpha));
+            for (double x = std::fmod(o.x(), step); x < width(); x += step)
+                p.drawLine(QPointF(x, 0), QPointF(x, height()));
+            for (double y = std::fmod(o.y(), step); y < height(); y += step)
+                p.drawLine(QPointF(0, y), QPointF(width(), y));
+        };
+        drawGrid(fine, static_cast<int>(fineAlpha * 42));   // faint, fades
+        drawGrid(coarse, 70);                               // solid
     }
     // axes
     QPointF o = toScreen(0, 0);

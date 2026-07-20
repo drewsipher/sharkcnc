@@ -40,6 +40,7 @@ void main(){
 }  // namespace
 
 GcodeView3D::GcodeView3D(QWidget* parent) : QOpenGLWidget(parent) {
+    viewIso();  // start in an isometric orientation
     QSurfaceFormat fmt;
     fmt.setVersion(3, 3);
     fmt.setProfile(QSurfaceFormat::CoreProfile);
@@ -91,9 +92,18 @@ void GcodeView3D::setPerspective(bool on) {
     perspective_ = on;
     update();
 }
-void GcodeView3D::viewTop() { yaw_ = 0; pitch_ = 1.5607f; update(); }
-void GcodeView3D::viewFront() { yaw_ = 0; pitch_ = 0.0f; update(); }
-void GcodeView3D::viewIso() { yaw_ = 0.7f; pitch_ = 0.62f; update(); }
+// Z-up CNC: identity looks straight down onto XY (top). Presets are scene
+// orientations that place the camera accordingly.
+void GcodeView3D::viewTop() { rot_ = QQuaternion(); update(); }
+void GcodeView3D::viewFront() {
+    rot_ = QQuaternion::fromAxisAndAngle(1, 0, 0, -90);
+    update();
+}
+void GcodeView3D::viewIso() {
+    rot_ = QQuaternion::fromAxisAndAngle(1, 0, 0, -60) *
+           QQuaternion::fromAxisAndAngle(0, 0, 1, -45);
+    update();
+}
 void GcodeView3D::fit() {
     dist_ = float(boundR_ * 2.5);
     update();
@@ -186,14 +196,23 @@ QMatrix4x4 GcodeView3D::projection() const {
 }
 
 QMatrix4x4 GcodeView3D::modelView() const {
-    // Z-up CNC convention; eye orbits target
-    QVector3D dir(std::cos(pitch_) * std::sin(yaw_),
-                  -std::cos(pitch_) * std::cos(yaw_), std::sin(pitch_));
-    QVector3D eye = target_ + dir * dist_;
-    QVector3D up = pitch_ > 1.5f ? QVector3D(0, 1, 0) : QVector3D(0, 0, 1);
+    // camera implicitly at origin looking down -Z; scene is centred on the
+    // target, rotated by the arcball quaternion, then pushed back by dist
     QMatrix4x4 v;
-    v.lookAt(eye, target_, up);
+    v.translate(0, 0, -dist_);
+    v.rotate(rot_);
+    v.translate(-target_);
     return v;
+}
+
+QVector3D GcodeView3D::arcballVector(QPoint p) const {
+    float w = width() ? float(width()) : 1.0f;
+    float h = height() ? float(height()) : 1.0f;
+    float x = (2.0f * p.x() - w) / w;
+    float y = (h - 2.0f * p.y()) / h;   // flip: screen Y is down
+    float d = x * x + y * y;
+    QVector3D v(x, y, d <= 1.0f ? std::sqrt(1.0f - d) : 0.0f);
+    return d > 1.0f ? v.normalized() : v;
 }
 
 void GcodeView3D::paintGL() {
@@ -278,25 +297,30 @@ void GcodeView3D::paintGL() {
 
 void GcodeView3D::resizeGL(int, int) {}
 
-void GcodeView3D::mousePressEvent(QMouseEvent* e) { lastMouse_ = e->pos(); }
+void GcodeView3D::mousePressEvent(QMouseEvent* e) {
+    lastMouse_ = e->pos();
+    arcStart_ = arcballVector(e->pos());
+    rotStart_ = rot_;
+}
 
 void GcodeView3D::mouseMoveEvent(QMouseEvent* e) {
-    QPoint d = e->pos() - lastMouse_;
-    lastMouse_ = e->pos();
-    if (e->buttons() & Qt::LeftButton) {
-        if (e->modifiers() & Qt::ShiftModifier) {  // pan
-            float s = dist_ * 0.0015f;
-            QVector3D right(std::cos(yaw_), std::sin(yaw_), 0);
-            QVector3D up(-std::sin(yaw_) * std::sin(pitch_),
-                         std::cos(yaw_) * std::sin(pitch_), std::cos(pitch_));
-            target_ -= right * (d.x() * s);
-            target_ += up * (d.y() * s);
-        } else {  // orbit
-            yaw_ += d.x() * 0.01f;
-            pitch_ = std::clamp(pitch_ - d.y() * 0.01f, -1.55f, 1.56f);
-        }
-        update();
+    if (!(e->buttons() & Qt::LeftButton)) return;
+    if (e->modifiers() & Qt::ShiftModifier) {  // pan in the screen plane
+        QPoint d = e->pos() - lastMouse_;
+        lastMouse_ = e->pos();
+        float s = dist_ * 0.0015f;
+        // screen right/up expressed in world space (inverse of scene rot)
+        QQuaternion inv = rot_.conjugated();
+        QVector3D right = inv.rotatedVector(QVector3D(1, 0, 0));
+        QVector3D up = inv.rotatedVector(QVector3D(0, 1, 0));
+        target_ -= right * (d.x() * s);
+        target_ -= up * (d.y() * s);
+    } else {  // arcball orbit: rotation depends on where you grabbed
+        QVector3D cur = arcballVector(e->pos());
+        QQuaternion dq = QQuaternion::rotationTo(arcStart_, cur);
+        rot_ = dq * rotStart_;
     }
+    update();
 }
 
 void GcodeView3D::wheelEvent(QWheelEvent* e) {

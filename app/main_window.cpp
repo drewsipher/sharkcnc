@@ -708,6 +708,7 @@ void MainWindow::loadProgramText(const QString& text, const QString& title) {
 }
 
 void MainWindow::loadStlPath(const QString& p) { if (view3d_) view3d_->loadStl(p); }
+void MainWindow::setView3DPreset(const QString& p){ if(!view3d_)return; if(p=="top")view3d_->viewTop(); else if(p=="front")view3d_->viewFront(); else view3d_->viewIso(); }
 
 void MainWindow::forceView3D() { if (!view3d_) return; viewStack_->setCurrentIndex(1); view3d_->viewIso(); }
 
