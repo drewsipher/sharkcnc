@@ -12,3 +12,4 @@ __pycache__/
 # C++ build trees
 build*/
 aqtinstall.log
+hardware/fluidnc-firmware/

@@ -1,0 +1,71 @@
+# fluidnc-bob rev C — bench bring-up config (FluidNC v4.x, ESP32-S3)
+#
+# Wiring assumed: AS-BUILT (common-cathode) driver connections —
+#   J2/J3/J4 STEP pad -> SP+, DIR pad -> DIR+, GND pad -> SP- + DIR- bridge.
+#   Step/dir are ACTIVE HIGH here. If you rework to common-anode
+#   (SP+/DIR+ tied to +5V, SP-/DIR- to the pads), add :low to every
+#   step_pin and direction_pin below.
+#
+# Limits/probe: board has 10k pullups to 3V3, switches close to GND,
+# so those inputs are ACTIVE LOW (:low). With nothing wired they read
+# "not triggered" — safe for the bench.
+#
+# Spindle relay intentionally not configured yet (nothing wired to J7).
+
+name: "Sherline mill (bench)"
+board: "fluidnc-bob-revC"
+
+# v4.0.3 has no RMT engine on ESP32-S3 (MAX_N_RMT=0); Timed is the
+# default software engine and is fine at our max ~15 kHz step rate.
+stepping:
+  engine: Timed
+  idle_ms: 255
+  pulse_us: 5
+  dir_delay_us: 5
+  disable_delay_us: 0
+
+axes:
+  x:
+    # 20 TPI screw, 200 steps/rev, 1600 usteps/rev (1/8) -> 1259.84
+    # NOTE: FluidNC's YAML parser rejects inline comments after values.
+    steps_per_mm: 1259.84
+    max_rate_mm_per_min: 700
+    acceleration_mm_per_sec2: 40
+    max_travel_mm: 228
+    motor0:
+      limit_neg_pin: gpio.1:low
+      standard_stepper:
+        step_pin: gpio.4
+        direction_pin: gpio.5
+  y:
+    steps_per_mm: 1259.84
+    max_rate_mm_per_min: 700
+    acceleration_mm_per_sec2: 40
+    max_travel_mm: 127
+    motor0:
+      limit_neg_pin: gpio.2:low
+      standard_stepper:
+        step_pin: gpio.6
+        direction_pin: gpio.7
+  z:
+    steps_per_mm: 1259.84
+    max_rate_mm_per_min: 400
+    acceleration_mm_per_sec2: 25
+    max_travel_mm: 158
+    motor0:
+      limit_neg_pin: gpio.42:low
+      standard_stepper:
+        step_pin: gpio.15
+        direction_pin: gpio.16
+
+probe:
+  pin: gpio.41:low
+
+spi:
+  sck_pin: gpio.40
+  miso_pin: gpio.39
+  mosi_pin: gpio.38
+
+sdcard:
+  cs_pin: gpio.21
+  card_detect_pin: NO_PIN

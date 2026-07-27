@@ -19,7 +19,8 @@ else — G-code, CAM, 3D view, probing). Hardware bridge is a custom KiCad
 breakout (`hardware/fluidnc-bob/`) that Drew is having fabbed at JLCPCB.
 
 **The load-bearing architectural fact:** the ESP does *only* real-time motion
-(step pulses via its RMT hardware peripheral). All CAM, parsing, 3D, and
+(step pulses via FluidNC's `Timed` engine — note v4.0.3 compiles RMT *out*
+on ESP32-S3, `MAX_N_RMT 0`; fine for our ~15 kHz max). All CAM, parsing, 3D, and
 simulation run on the PC. This is why a ~$6 chip can drive a mill the
 proprietary board charged hundreds for. Never move heavy work onto the ESP.
 

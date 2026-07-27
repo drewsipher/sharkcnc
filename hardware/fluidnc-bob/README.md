@@ -53,42 +53,15 @@ power-net comparison). Unbuilt, rev C.
 
 Inputs: 10 k pullup to 3V3 + 1 k series + 100 nF on board.
 
-## FluidNC config (starting point — S3 build of FluidNC)
+## FluidNC config
 
-```yaml
-name: "Sherline 2000"
-board: "fluidnc-bob-revC"
-stepping: { engine: RMT, idle_ms: 255, pulse_us: 5, dir_delay_us: 5 }
-axes:
-  x:
-    steps_per_mm: 1259.84        # 20 TPI, 200 steps, 1/8 microstep
-    max_rate_mm_per_min: 700
-    acceleration_mm_per_sec2: 40
-    max_travel_mm: 228
-    motor0:
-      limit_neg_pin: gpio.1
-      standard_stepper: { step_pin: gpio.4, direction_pin: gpio.5 }
-  y:
-    steps_per_mm: 1259.84
-    max_rate_mm_per_min: 700
-    acceleration_mm_per_sec2: 40
-    max_travel_mm: 127
-    motor0:
-      limit_neg_pin: gpio.2
-      standard_stepper: { step_pin: gpio.6, direction_pin: gpio.7 }
-  z:
-    steps_per_mm: 1259.84
-    max_rate_mm_per_min: 400
-    acceleration_mm_per_sec2: 25
-    max_travel_mm: 158
-    motor0:
-      limit_neg_pin: gpio.42
-      standard_stepper: { step_pin: gpio.15, direction_pin: gpio.16 }
-probe: { pin: gpio.41 }
-spi: { sck_pin: gpio.40, miso_pin: gpio.39, mosi_pin: gpio.38 }
-sd: { cs_pin: gpio.21 }
-OnOff: { output_pin: gpio.17, spinup_ms: 2000, spindown_ms: 2000 }
-```
+The maintained config is [`config.yaml`](config.yaml) (bench bring-up,
+as-built active-high step/dir; limits/probe are `:low` because the board
+pulls them up and switches close to GND). Verified against FluidNC
+v4.0.3 example syntax — note it is `sdcard:`, not `sd:`.
+
+If the drivers are reworked to common-anode (SP+/DIR+ tied to +5V),
+add `:low` to every `step_pin` and `direction_pin`.
 
 Upload jobs to SD and run locally — WiFi then carries only status/jog and
 can never stall a cut. Verify pin syntax against the FluidNC wiki for the
