@@ -198,6 +198,10 @@ Read these before touching the relevant code.
   **Pin authority: `fluidnc-bob.kicad_pcb` (what was fabbed), NOT `design.py`
   or the README** — the layout revised pins after generation (SD moved to
   gpio 10-13) and generated artifacts can lag. Check the PCB pad nets first.
+  **Rev D** (`hardware/fluidnc-bob-revD/`, 2026-07-27): schematic + verified
+  netlist + DigiKey BOM for the successor board — onboard 36V→5V buck,
+  AHCT541 at 5V, EN wired (gpio.8), E-stop input (gpio.9), real connectors.
+  Same proven GPIO map. Awaiting parts order + Drew's layout.
 - **Spindle:** relay on/off first (harvest a Songle relay off the UCNCV4);
   the AUX pad is wired for future isolated-PWM speed control. **Never wire
   logic to the Sherline speed pot — it's not mains-isolated.**

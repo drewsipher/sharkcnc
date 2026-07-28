@@ -1,0 +1,26 @@
+Quantity,Manufacturer Part Number,Digi-Key Part Number,Description,Customer Reference
+1,TSR 1-4850WI,,Traco buck 36V->5V 1A SIP-3 (9-72V in),U2
+2,SN74AHCT541N,296-4755-5-ND,TI octal buffer TTL-in DIP-20,U1
+10,MMBT2222A-7-F,,NPN SOT-23,Q1 Q2
+5,SMBJ40A,,TVS 40V standoff SMB,D1
+10,S1M-13-F,,Rectifier 1A 1000V SMA (flyback),D2
+5,WP7113GD,,LED 5mm green,LED1
+5,WP7113ID,,LED 5mm red,LED2
+5,0466002.NR,F1457CT-ND,Fuse 2A 63V 1206,F1
+20,RC0805FR-07100KL,,Res 100k 0805 1%,R10-R17 R41 R43
+20,RC0805FR-0710KL,,Res 10k 0805 1%,R20-R24
+20,RC0805FR-071KL,,Res 1k 0805 1%,R30-R34 R40 R42 R50 R51
+20,RC0805FR-07100RL,,Res 100R 0805 1%,R60-R66
+20,CL21B104KBCNNNC,,Cap 100nF 50V X7R 0805,C2 C4 C5 C20-C24
+5,CL31B106KAHNNNE,,Cap 10uF 25V X7R 1206,C3
+2,EEU-FC1H101,,Cap 100uF 50V electrolytic D8 P3.5,C1
+3,PPTC221LFBN-RC,,Socket strip 1x22 2.54mm,A1 A2
+4,1715721,,Phoenix MKDS 1.5/2-5.08 terminal 2-pos,J1 J10 J12
+4,1715750,,Phoenix MKDS 1.5/5-5.08 terminal 5-pos,J2 J3 J4
+8,B2B-XH-A(LF)(SN),,JST XH header 2-pos vertical,J5-J9 J11
+2,B6B-XH-A(LF)(SN),,JST XH header 6-pos vertical,J13
+10,XHP-2,,JST XH housing 2-pos,cables
+2,XHP-6,,JST XH housing 6-pos,SD cable
+50,SXH-001T-P0.6,,JST XH crimp contact,cables
+1,PRPC040SAAN-RC,,Pin header 1x40 breakaway 2.54 (cut 3 for JP1),JP1
+5,SPC02SYAN,,Jumper shunt 2.54,JP1

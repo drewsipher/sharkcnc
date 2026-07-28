@@ -1,0 +1,73 @@
+# fluidnc-bob rev D BOM
+
+Import `digikey_bom.csv` into DigiKey's BOM Manager (myLists → upload) —
+it matches on Manufacturer Part Number; the Digi-Key Part Number column is
+filled where it was explicitly verified. Quantities include spares.
+
+**Verified on DigiKey (product page confirmed, in stock as of 2026-07-27):**
+buck, buffer, fuse, socket strips, Phoenix terminal blocks. Jellybean
+passives/discretes use industry-standard MPNs.
+
+## Semiconductors & modules
+
+| Ref | Part | MPN | DK PN | Qty (order) | Alternatives |
+|---|---|---|---|---|---|
+| U2 | Buck 36→5 V, 1 A, SIP-3, 9–72 V in | **TSR 1-4850WI** (Traco) | — (page verified) | 1 | TSR 0.6-4850WI (0.6 A); Recom R-78HB5.0-0.5L (0.5 A — tight, see README) |
+| U1 | Octal buffer, TTL-in, DIP-20 | **SN74AHCT541N** (TI) | 296-4755-5-ND | 2 | Nexperia 74HCT541N; TI SN74HCT541N |
+| Q1, Q2 | NPN, SOT-23 | **MMBT2222A-7-F** (Diodes) | — | 10 | onsemi MMBT2222ALT1G |
+| D1 | TVS 40 V standoff, SMB | **SMBJ40A** (Littelfuse) | — | 5 | Vishay SMBJ40A-E3/52 |
+| D2 | Flyback 1 A 1000 V, SMA | **S1M-13-F** (Diodes) | — | 10 | onsemi S1M; any 1N4007-class SMA |
+| LED1 | 5 mm green | **WP7113GD** (Kingbright) | — | 5 | any 5 mm LED |
+| LED2 | 5 mm red | **WP7113ID** (Kingbright) | — | 5 | any 5 mm LED |
+| F1 | Fuse 2 A 63 V, 1206 | **0466002.NR** (Littelfuse) | F1457CT-ND | 5 | Bourns SF-1206F200-2 (verified) |
+
+## Passives (0805 unless noted)
+
+| Ref | Value | MPN | Qty (order) |
+|---|---|---|---|
+| R10–R17, R41, R43 | 100 kΩ | RC0805FR-07100KL (Yageo) | 20 |
+| R20–R24 | 10 kΩ | RC0805FR-0710KL | 20 |
+| R30–R34, R40, R42, R50, R51 | 1 kΩ | RC0805FR-071KL | 20 |
+| R60–R66 | 100 Ω | RC0805FR-07100RL | 20 |
+| C2, C4, C5, C20–C24 | 100 nF 50 V X7R | CL21B104KBCNNNC (Samsung) | 20 |
+| C3 | 10 µF 25 V X7R, 1206 | CL31B106KAHNNNE (Samsung) | 5 |
+| C1 | 100 µF 50 V electrolytic, D8 P3.5 | EEU-FC1H101 (Panasonic) | 2 |
+
+## Connectors
+
+| Ref | Part | MPN | DK PN | Qty (order) |
+|---|---|---|---|---|
+| A1, A2 | Socket strip 1×22, 2.54 mm | **PPTC221LFBN-RC** (Sullins) | — (page verified) | 3 |
+| J1, J10, J12 | Screw terminal 2-pos 5.08 | **1715721** (Phoenix MKDS 1,5/2-5,08) | — (page verified) | 4 |
+| J2–J4 | Screw terminal 5-pos 5.08 | **1715750** (Phoenix MKDS 1,5/5-5,08) | — (page verified) | 4 |
+| J5–J9, J11 | JST XH header 2-pos vert | B2B-XH-A(LF)(SN) | — | 8 |
+| J13 | JST XH header 6-pos vert | B6B-XH-A(LF)(SN) | — | 2 |
+| — | XH housing 2-pos | XHP-2 | — | 10 |
+| — | XH housing 6-pos | XHP-6 | — | 2 |
+| — | XH crimp contact | SXH-001T-P0.6 | — | 50 |
+| JP1 | Pin header 1×40 breakaway (cut 3) | PRPC040SAAN-RC (Sullins) | — | 1 |
+| — | Jumper shunt 2.54 | SPC02SYAN (Sullins) | — | 5 |
+| (U1) | DIP-20 socket | — on hand (optional) | — | — |
+
+Crimp-shy alternative for the XH inputs: pre-crimped XH jumper wire sets
+(e.g. DigiKey "JST XH pre-crimped leads" or Adafruit 4873-style) — the
+board side is identical.
+
+## Not ordered (on hand / off-board)
+
+- ESP32-S3-WROOM-1 N16R8 44-pin dual-USB-C devkit (existing)
+- microSD breakout module (existing, fed 3.3 V)
+- Songle 5 V relay for spindle (harvested off UCNCV4, off-board via J10)
+- M3 standoffs/screws (H1–H4)
+
+## Electrical sanity notes
+
+- Opto drive: AHCT541 at 5 V through 100 Ω into FMD2740C (~270 Ω internal
+  + LED): ≈ 9 mA per input — mid-spec (5–15 mA), matches the proven rev C
+  drive topology.
+- Worst-case buffer package current: 6 ch × 9 mA ≈ 54 mA < 75 mA abs max.
+- Buck load estimate: devkit WiFi bursts ≈ 350 mA + buffer 55 mA + SD
+  100 mA + relay 72 mA + LEDs ≈ 600 mA peak, ~300 mA typical → 1 A part.
+- TVS: 40 V standoff sits above the 36 V rail (+ trim margin); clamps
+  ≈ 64 V < TSR 1-4850WI's 72 V max input. Reversed input forward-biases
+  the TVS and blows F1 — that's why F1 gets spares.

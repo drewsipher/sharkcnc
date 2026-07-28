@@ -1,0 +1,7 @@
+{
+  "board": { "design_settings": {}, "layer_presets": [], "viewports": [] },
+  "libraries": { "pinned_footprint_libs": [], "pinned_symbol_libs": [] },
+  "meta": { "filename": "fluidnc-bob-revD.kicad_pro", "version": 3 },
+  "schematic": { "legacy_lib_dir": "", "legacy_lib_list": [] },
+  "sheets": [], "text_variables": {}
+}
