@@ -3,13 +3,27 @@
 Successor to the rev C board, folding in everything learned during the
 2026-07-27 bench bring-up. **Deliverable = schematic + verified netlist +
 footprint/3D assignments + DigiKey BOM.** Drew does the PCB layout
-("Update PCB from Schematic" pulls everything in; all footprints are from
-KiCad's standard libraries, each with a 3D model).
+("Update PCB from Schematic" pulls everything in; footprints are from
+KiCad's standard libraries with 3D models, plus the proven rev C devkit
+socket footprint).
 
-**Design state:** generated schematic passes `kicad-cli sch erc` with
+**Design state:** drawn-wire schematic (power symbols + real wires;
+global labels only for long-haul nets) passes `kicad-cli sch erc` with
 **0 violations**; netlist machine-verified against `generate/design.py`
-(name + pad-set diff); every footprint + 3D model existence-checked
-against the installed KiCad 10 libraries. Unbuilt.
+(connectivity-partition + power-name diff); every footprint + 3D model
+existence-checked against the installed KiCad 10 libraries (one
+exception: the devkit socket uses the proven rev C custom footprint,
+which has no 3D model). Each non-passive part carries hidden **Digikey**
+and **Datasheet** URL properties. Unbuilt.
+
+**Devkit:** single 44-pin symbol + the rev C `ESP32_S3_DevKit_44_Socket`
+footprint (copied into `fluidnc-bob-revD.pretty/`, socketed via two
+PPTC221LFBN-RC strips). DigiKey-stocked spare: ESP32-S3-DEVKITC-1-N8
+(identical pin legend; see BOM.md).
+
+**Note:** the 74AHCT541 channel assignment differs from rev C (channels
+follow devkit pad order so the schematic bus is crossing-free). This is
+internal to the board — the GPIO map and `config.yaml` are unchanged.
 
 ## What changed vs rev C (and why)
 
@@ -83,9 +97,9 @@ still works before the EN lines are connected.
 
 ## ⚠ Layout checklist
 
-1. **Measure the devkit row spacing** (rev C's fabbed socket fit — reuse
-   that measurement) and set the A1↔A2 socket distance to match. Check
-   the devkit's printed pin legend against `DEVKIT_LEFT/RIGHT` in
+1. The devkit socket footprint is the rev C one that already fits the
+   fabbed board — no row-spacing gamble this time. Still check the
+   devkit's printed pin legend against `DEVKIT_LEFT/RIGHT` in
    `generate/design.py` (pin 1 = 3V3, antenna end).
 2. 36 V nets (J1, F1, D1, C1, C2, U2.1): ≥ 0.5 mm clearance, short and
    wide; keep them away from the limit/probe/SD signal area.
@@ -103,7 +117,7 @@ still works before the EN lines are connected.
 
 ```sh
 python3 generate/design.py          # netlist dump + single-pad-net assert
-python3 generate/gen_sch.py         # schematic (stub+global-label style)
+python3 generate/gen_sch.py         # schematic (drawn wires + labels)
 kicad-cli sch erc --exit-code-violations fluidnc-bob-revD.kicad_sch
 python3 generate/verify_netlist.py  # diff KiCad netlist vs design.py
 ```

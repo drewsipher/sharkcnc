@@ -37,7 +37,7 @@ passives/discretes use industry-standard MPNs.
 
 | Ref | Part | MPN | DK PN | Qty (order) |
 |---|---|---|---|---|
-| A1, A2 | Socket strip 1×22, 2.54 mm | **PPTC221LFBN-RC** (Sullins) | — (page verified) | 3 |
+| (A1) | Socket strip 1×22, 2.54 mm ×2 | **PPTC221LFBN-RC** (Sullins) | — (page verified) | 3 |
 | J1, J10, J12 | Screw terminal 2-pos 5.08 | **1715721** (Phoenix MKDS 1,5/2-5,08) | — (page verified) | 4 |
 | J2–J4 | Screw terminal 5-pos 5.08 | **1715750** (Phoenix MKDS 1,5/5-5,08) | — (page verified) | 4 |
 | J5–J9, J11 | JST XH header 2-pos vert | B2B-XH-A(LF)(SN) | — | 8 |
@@ -52,6 +52,16 @@ passives/discretes use industry-standard MPNs.
 Crimp-shy alternative for the XH inputs: pre-crimped XH jumper wire sets
 (e.g. DigiKey "JST XH pre-crimped leads" or Adafruit 4873-style) — the
 board side is identical.
+
+## Devkit (A1)
+
+The board sockets the existing 44-pin dual-USB-C ESP32-S3 clone using the
+rev C custom socket footprint (proven fit). The official Espressif board
+has the identical pin legend and is DigiKey-stocked if you want a spare:
+**ESP32-S3-DEVKITC-1-N8** ([product page](https://www.digikey.com/en/products/detail/espressif-systems/ESP32-S3-DEVKITC-1-N8/15199021))
+— N8 = no PSRAM, which is fine (FluidNC doesn't need it; GPIO 35-37 are
+then free). Verify its header row spacing against the socket before
+soldering a board around it.
 
 ## Not ordered (on hand / off-board)
 

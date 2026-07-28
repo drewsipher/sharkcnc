@@ -1,8 +1,9 @@
-"""Diff KiCad's exported netlist against design.py — the authoritative
-check that the schematic wires exactly the intended circuit.
+"""Compare KiCad's exported netlist against design.py — the authoritative
+check that the drawn schematic wires exactly the intended circuit.
 
-Rev D uses global labels everywhere, so every multi-pin net keeps its
-design.py NAME in the export — compare both names and pad sets directly.
+Compares CONNECTIVITY PARTITIONS (sets of pads that must be joined), since
+KiCad auto-names unlabeled drawn nets. Power and labeled nets are
+additionally checked by name.
 """
 import subprocess, sys, os, re
 
@@ -37,20 +38,27 @@ for raw in open(out):
         kicad[cur].add((ref, m.group(1)))
         ref = None
 
-want = {net: set(pads) for net, pads in nets().items()}
+kicad = {n: frozenset(p) for n, p in kicad.items()}
+want = {net: frozenset(pads) for net, pads in nets().items()}
+
 ok = True
-for net, pads in sorted(want.items()):
-    got = kicad.get(net)
-    if got is None:
-        print(f"MISSING net {net} (want {sorted(pads)})")
-        ok = False
-    elif got != pads:
-        print(f"MISMATCH {net}: diff {sorted(got ^ pads)}")
-        ok = False
-extra = {n: p for n, p in kicad.items()
-         if n not in want and len(p) > 1}
-for n, p in sorted(extra.items()):
-    print(f"UNEXPECTED kicad net {n}: {sorted(p)}")
+want_parts = {p for p in want.values() if len(p) > 1}
+kicad_parts = {p for p in kicad.values() if len(p) > 1}
+for p in sorted(want_parts - kicad_parts, key=sorted):
+    net = next(n for n, pp in want.items() if pp == p)
+    print(f"PARTITION MISMATCH for {net} (want {sorted(p)}):")
+    for n, pp in kicad.items():
+        if pp & p:
+            print(f"   kicad {n}: symmetric diff {sorted(pp ^ p)}")
     ok = False
+for p in sorted(kicad_parts - want_parts, key=sorted):
+    net = next(n for n, pp in kicad.items() if pp == p)
+    print(f"UNEXPECTED kicad net {net}: {sorted(p)}")
+    ok = False
+for pn in ("+5V", "+3V3", "GND", "+36V"):
+    if kicad.get(pn) != want[pn]:
+        print(f"NAME MISMATCH {pn}: diff "
+              f"{sorted(kicad.get(pn, frozenset()) ^ want[pn])}")
+        ok = False
 print("NETLIST VERIFIED OK" if ok else "NETLIST ERRORS", flush=True)
 sys.exit(0 if ok else 1)

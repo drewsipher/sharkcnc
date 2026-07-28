@@ -14,7 +14,8 @@ Quantity,Manufacturer Part Number,Digi-Key Part Number,Description,Customer Refe
 20,CL21B104KBCNNNC,,Cap 100nF 50V X7R 0805,C2 C4 C5 C20-C24
 5,CL31B106KAHNNNE,,Cap 10uF 25V X7R 1206,C3
 2,EEU-FC1H101,,Cap 100uF 50V electrolytic D8 P3.5,C1
-3,PPTC221LFBN-RC,,Socket strip 1x22 2.54mm,A1 A2
+3,PPTC221LFBN-RC,,Socket strip 1x22 2.54mm,A1 socket rows
+1,ESP32-S3-DEVKITC-1-N8,,Espressif ESP32-S3 devkit (optional spare; verify row spacing),A1 spare
 4,1715721,,Phoenix MKDS 1.5/2-5.08 terminal 2-pos,J1 J10 J12
 4,1715750,,Phoenix MKDS 1.5/5-5.08 terminal 5-pos,J2 J3 J4
 8,B2B-XH-A(LF)(SN),,JST XH header 2-pos vertical,J5-J9 J11

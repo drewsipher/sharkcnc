@@ -58,7 +58,7 @@ DEVKIT_LEFT = [   # (socket pin, devkit legend, net or None)
     (21, "5V",     P5),
     (22, "GND",    GND),
 ]
-DEVKIT_RIGHT = [  # socket A2; devkit pads 23-44 top->bottom = pins 1-22
+DEVKIT_RIGHT = [  # devkit pads 23-44 top->bottom (index 1 -> pad 23)
     (1,  "GND",    GND),
     (2,  "TX43",   None),
     (3,  "RX44",   None),
@@ -84,7 +84,7 @@ DEVKIT_RIGHT = [  # socket A2; devkit pads 23-44 top->bottom = pins 1-22
 ]
 
 FP = {  # footprint shorthands — ALL from KiCad's standard libs (3D incl.)
-    "sock22": "Connector_PinSocket_2.54mm:PinSocket_1x22_P2.54mm_Vertical",
+    "socket": "fluidnc-bob-revD:ESP32_S3_DevKit_44_Socket",
     "dip20":  "Package_DIP:DIP-20_W7.62mm_Socket",
     "tsr1":   "Converter_DCDC:Converter_DCDC_TRACO_TSR-1_THT",
     "sot23":  "Package_TO_SOT_SMD:SOT-23",
@@ -106,99 +106,137 @@ FP = {  # footprint shorthands — ALL from KiCad's standard libs (3D incl.)
 
 COMPONENTS = {}
 
-def add(ref, sym, value, fp, pins):
-    COMPONENTS[ref] = dict(sym=sym, value=value, fp=FP[fp], pins=pins)
+def add(ref, sym, value, fp, pins, info=None):
+    COMPONENTS[ref] = dict(sym=sym, value=value, fp=FP[fp], pins=pins,
+                           info=info or {})
 
-# --- ESP32-S3 devkit socket (two 1x22 strips) ---------------------------
-add("A1", "CONN_1x22", "DEVKIT-LEFT", "sock22",
-    {str(p): n for p, _, n in DEVKIT_LEFT if n})
-add("A2", "CONN_1x22", "DEVKIT-RIGHT", "sock22",
-    {str(p): n for p, _, n in DEVKIT_RIGHT if n})
+# --- ESP32-S3 devkit socket (rev C custom footprint, 2x22 rows) ---------
+# DEVKIT_RIGHT rows are devkit pads 23-44 (entry 1 -> pad 23, etc.)
+add("A1", "ESP32_S3_DevKit_44", "ESP32-S3-DevKit-44", "socket",
+    dict({str(p): n for p, _, n in DEVKIT_LEFT if n},
+         **{str(i + 23): n for i, (_, _, n) in enumerate(DEVKIT_RIGHT) if n}),
+    info=dict(
+        digikey="https://www.digikey.com/en/products/detail/espressif-systems/ESP32-S3-DEVKITC-1-N8/15199021",
+        datasheet="https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide.html"))
 
 # --- power entry: 36V -> fuse -> TVS/bulk -> buck -> jumper -> +5V ------
-add("J1", "TB_02", "36V-IN", "tb2", {"1": P36I, "2": GND})
-add("F1", "Fuse_H", "2A", "fuse", {"1": P36I, "2": P36})
-add("D1", "D_V", "SMBJ40A", "smb", {"1": P36, "2": GND})   # K=+36V, A=GND
+add("J1", "TB_02", "36V-IN", "tb2", {"1": P36I, "2": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/phoenix-contact/1715721/260631",
+              datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-2-508-1715721"))
+add("F1", "Fuse_H", "2A", "fuse", {"1": P36I, "2": P36},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/littelfuse-inc/0466002.NR/F1457CT-ND/521355",
+              datasheet="https://www.digikey.com/en/products/result?keywords=0466002.NR"))
+add("D1", "D_V", "SMBJ40A", "smb", {"1": P36, "2": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=SMBJ40A",
+              datasheet="https://www.digikey.com/en/products/result?keywords=SMBJ40A"))   # K=+36V, A=GND
 add("C1", "C_Pol", "100uF/50V", "cp", {"1": P36, "2": GND})
 add("C2", "C", "100nF", "c", {"1": P36, "2": GND})
 add("U2", "TSR1", "TSR 1-4850WI", "tsr1",
-    {"1": P36, "2": GND, "3": P5B})
+    {"1": P36, "2": GND, "3": P5B},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/traco-power/TSR-1-4850WI/10438384",
+              datasheet="https://www.tracopower.com/model/tsr-1-4850wi"))
 # 5V source select: 1-2 = buck (normal), 2-3 = external bench 5V
-add("JP1", "HDR_03", "5V-SRC", "hdr3", {"1": P5B, "2": P5, "3": P5X})
-add("J12", "TB_02", "5V-EXT", "tb2", {"1": P5X, "2": GND})
+add("JP1", "HDR_03", "5V-SRC", "hdr3", {"1": P5B, "2": P5, "3": P5X},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=PRPC040SAAN-RC",
+              datasheet="https://www.digikey.com/en/products/result?keywords=PRPC040SAAN-RC"))
+add("J12", "TB_02", "5V-EXT", "tb2", {"1": P5X, "2": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/phoenix-contact/1715721/260631",
+              datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-2-508-1715721"))
 add("C3", "C_1206", "10uF/25V", "c1206", {"1": P5, "2": GND})
 add("C4", "C", "100nF", "c", {"1": P5, "2": GND})
 add("R50", "R", "1k", "r", {"1": P5, "2": "LEDR"})
-add("LED1", "LED_V", "PWR", "led", {"2": "LEDR", "1": GND})  # A=2, K=1
+add("LED1", "LED_V", "PWR", "led", {"2": "LEDR", "1": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=WP7113GD",
+              datasheet="https://www.kingbrightusa.com/images/catalog/SPEC/WP7113GD.pdf"))  # A=2, K=1
 
 # --- 74AHCT541 buffer at full 5V ----------------------------------------
-# Channel order matches the proven rev C fabbed board:
-#   A1..A8 (pins 2..9)  =  Xstep Xdir Ystep Ydir Zstep Zdir Spin Aux
+# Channel order = devkit pad order (pads 4..11 -> A1..A8), so the
+# schematic bus is crossing-free; a buffer bit is a buffer bit.
 add("U1", "74AHCT541", "SN74AHCT541N", "dip20", {
     "1": GND, "19": GND,                      # OE1#, OE2#
-    "2": "STEPX_G", "18": "XSTEP5",
-    "3": "DIRX_G",  "17": "XDIR5",
-    "4": "STEPY_G", "16": "YSTEP5",
-    "5": "DIRY_G",  "15": "YDIR5",
-    "6": "STEPZ_G", "14": "ZSTEP5",
-    "7": "DIRZ_G",  "13": "ZDIR5",
-    "8": "SPIN_G",  "12": "SPIN5",
-    "9": "AUX1_G",  "11": "AUX5",
+    "2": "AUX1_G",  "18": "AUX5",
+    "3": "SPIN_G",  "17": "SPIN5",
+    "4": "DIRZ_G",  "16": "ZDIR5",
+    "5": "STEPZ_G", "15": "ZSTEP5",
+    "6": "DIRY_G",  "14": "YDIR5",
+    "7": "STEPY_G", "13": "YSTEP5",
+    "8": "DIRX_G",  "12": "XDIR5",
+    "9": "STEPX_G", "11": "XSTEP5",
     "20": P5, "10": GND,
-})
+},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/texas-instruments/SN74AHCT541N/375903",
+              datasheet="https://www.ti.com/lit/ds/symlink/sn74ahct541.pdf"))
 add("C5", "C", "100nF", "c", {"1": P5, "2": GND})
 
 # boot-time pulldowns on buffer inputs
-for i, net in enumerate(["STEPX_G", "DIRX_G", "STEPY_G", "DIRY_G",
-                         "STEPZ_G", "DIRZ_G", "SPIN_G", "AUX1_G"]):
+for i, net in enumerate(["AUX1_G", "SPIN_G", "DIRZ_G", "STEPZ_G",
+                         "DIRY_G", "STEPY_G", "DIRX_G", "STEPX_G"]):
     add(f"R1{i}", "R", "100k", "r", {"1": net, "2": GND})
 
 # 100R series on the six step/dir outputs (current cap; ~9mA per opto)
 for i, (n5, n) in enumerate([("XSTEP5", "XSTEP"), ("XDIR5", "XDIR"),
                              ("YSTEP5", "YSTEP"), ("YDIR5", "YDIR"),
                              ("ZSTEP5", "ZSTEP"), ("ZDIR5", "ZDIR")]):
-    add(f"R6{i}", "R_H", "100R", "r", {"1": n5, "2": n})
-add("R66", "R_H", "100R", "r", {"1": "AUX5", "2": "AUX"})
+    add(f"R6{i}", "R_H", "100R", "r", {"1": n, "2": n5})
+add("R66", "R_H", "100R", "r", {"1": "AUX", "2": "AUX5"})
 
 # --- driver terminals: STEP DIR GND | +5V(EN+) EN-(sink) ----------------
 for ref, axis in [("J2", "X"), ("J3", "Y"), ("J4", "Z")]:
     add(ref, "TB_05", f"{axis}-DRV", "tb5",
         {"1": f"{axis}STEP", "2": f"{axis}DIR", "3": GND,
-         "4": P5, "5": "EN_SINK"})
+         "4": P5, "5": "EN_SINK"},
+        info=dict(digikey="https://www.digikey.com/en/products/result?keywords=1715750",
+                  datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-5-508-1715750"))
 
 # --- shared enable sink: GPIO8 high = motors disabled -------------------
 add("Q2", "Q_NPN", "MMBT2222A", "sot23",
-    {"1": "Q2B", "2": GND, "3": "EN_SINK"})   # SOT-23: 1=B, 2=E, 3=C
-add("R42", "R", "1k", "r", {"1": "EN_G", "2": "Q2B"})
+    {"1": "Q2B", "2": GND, "3": "EN_SINK"},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=MMBT2222A-7-F",
+              datasheet="https://www.diodes.com/assets/Datasheets/ds30041.pdf"))   # SOT-23: 1=B, 2=E, 3=C
+add("R42", "R_H", "1k", "r", {"1": "EN_G", "2": "Q2B"})
 add("R43", "R", "100k", "r", {"1": "Q2B", "2": GND})
 add("R51", "R", "1k", "r", {"1": P5, "2": "LED2R"})
-add("LED2", "LED_V", "MOTORS-OFF", "led", {"2": "LED2R", "1": "EN_SINK"})
+add("LED2", "LED_V", "MOTORS-OFF", "led", {"2": "LED2R", "1": "EN_SINK"},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=WP7113ID",
+              datasheet="https://www.kingbrightusa.com/images/catalog/SPEC/WP7113ID.pdf"))
 
 # --- inputs: limits + probe + E-stop (pullup 10k, series 1k, 100nF) -----
 INPUTS = [("LIMX", 0, "J5", "LIM-X"), ("LIMY", 1, "J6", "LIM-Y"),
           ("LIMZ", 2, "J7", "LIM-Z"), ("PROBE", 3, "J8", "PROBE"),
           ("ESTOP", 4, "J9", "E-STOP")]
 for name, i, jref, jval in INPUTS:
-    add(jref, "XH_02", jval, "xh2", {"1": f"{name}_IN", "2": GND})
+    add(jref, "XH_02", jval, "xh2", {"1": f"{name}_IN", "2": GND},
+        info=dict(digikey="https://www.digikey.com/en/products/result?keywords=B2B-XH-A(LF)(SN)",
+                  datasheet="https://www.jst-mfg.com/product/pdf/eng/eXH.pdf"))
     add(f"R2{i}", "R", "10k", "r", {"1": P3V3, "2": f"{name}_IN"})
     add(f"C2{i}", "C", "100nF", "c", {"1": f"{name}_IN", "2": GND})
-    add(f"R3{i}", "R_H", "1k", "r", {"1": f"{name}_IN", "2": f"{name}_G"})
+    add(f"R3{i}", "R_H", "1k", "r", {"1": f"{name}_G", "2": f"{name}_IN"})
 
 # --- spindle relay (harvested Songle 5V coil, off-board) ----------------
 add("Q1", "Q_NPN", "MMBT2222A", "sot23",
-    {"1": "Q1B", "2": GND, "3": "RLY_N"})
-add("R40", "R", "1k", "r", {"1": "SPIN5", "2": "Q1B"})
+    {"1": "Q1B", "2": GND, "3": "RLY_N"},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=MMBT2222A-7-F",
+              datasheet="https://www.diodes.com/assets/Datasheets/ds30041.pdf"))
+add("R40", "R_H", "1k", "r", {"1": "SPIN5", "2": "Q1B"})
 add("R41", "R", "100k", "r", {"1": "Q1B", "2": GND})
-add("D2", "D_V", "S1M", "sma", {"1": P5, "2": "RLY_N"})    # flyback K=+5V
-add("J10", "TB_02", "RELAY", "tb2", {"1": P5, "2": "RLY_N"})
+add("D2", "D_V", "S1M", "sma", {"1": P5, "2": "RLY_N"},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=S1M-13-F",
+              datasheet="https://www.diodes.com/assets/Datasheets/ds28002.pdf"))    # flyback K=+5V
+add("J10", "TB_02", "RELAY", "tb2", {"1": P5, "2": "RLY_N"},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/phoenix-contact/1715721/260631",
+              datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-2-508-1715721"))
 
 # --- aux buffered 5V output (future spindle PWM / isolator) -------------
-add("J11", "XH_02", "AUX", "xh2", {"1": "AUX", "2": GND})
+add("J11", "XH_02", "AUX", "xh2", {"1": "AUX", "2": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=B2B-XH-A(LF)(SN)",
+              datasheet="https://www.jst-mfg.com/product/pdf/eng/eXH.pdf"))
 
 # --- microSD module: powered from 3V3 (proven safe on the bench) --------
 add("J13", "XH_06", "SD", "xh6",
     {"1": P3V3, "2": GND, "3": "SD_CS", "4": "SD_MOSI",
-     "5": "SD_SCK", "6": "SD_MISO"})
+     "5": "SD_SCK", "6": "SD_MISO"},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=B6B-XH-A(LF)(SN)",
+              datasheet="https://www.jst-mfg.com/product/pdf/eng/eXH.pdf"))
 
 for i in range(1, 5):
     add(f"H{i}", "HOLE", "M3", "hole", {})
