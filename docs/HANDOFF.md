@@ -195,6 +195,9 @@ Read these before touching the relevant code.
   relay driver, 1210 polyfuse, solder wire pads (no connectors), microSD
   header. **GPIO map & FluidNC `config.yaml` are in that dir's README.** The
   schematic is generated from `generate/design.py`; Drew did the PCB layout.
+  **Pin authority: `fluidnc-bob.kicad_pcb` (what was fabbed), NOT `design.py`
+  or the README** — the layout revised pins after generation (SD moved to
+  gpio 10-13) and generated artifacts can lag. Check the PCB pad nets first.
 - **Spindle:** relay on/off first (harvest a Songle relay off the UCNCV4);
   the AUX pad is wired for future isolated-PWM speed control. **Never wire
   logic to the Sherline speed pot — it's not mains-isolated.**
