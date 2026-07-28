@@ -97,7 +97,9 @@ FP = {  # footprint shorthands — ALL from KiCad's standard libs (3D incl.)
     "fuse":   "Fuse:Fuse_1206_3216Metric",
     "led":    "LED_THT:LED_D5.0mm",
     "tb2":    "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",
+    "tb3":    "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-3-5.08_1x03_P5.08mm_Horizontal",
     "tb5":    "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-5-5.08_1x05_P5.08mm_Horizontal",
+    "relay":  "Relay_THT:Relay_SPDT_Omron-G5LE-1",
     "xh2":    "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical",
     "xh6":    "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical",
     "hdr3":   "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
@@ -212,7 +214,7 @@ for name, i, jref, jval in INPUTS:
     add(f"C2{i}", "C", "100nF", "c", {"1": f"{name}_IN", "2": GND})
     add(f"R3{i}", "R_H", "1k", "r", {"1": f"{name}_G", "2": f"{name}_IN"})
 
-# --- spindle relay (harvested Songle 5V coil, off-board) ----------------
+# --- spindle relay: onboard G5LE-14, switches the spindle AC ------------
 add("Q1", "Q_NPN", "MMBT2222A", "sot23",
     {"1": "Q1B", "2": GND, "3": "RLY_N"},
     info=dict(digikey="https://www.digikey.com/en/products/result?keywords=MMBT2222A-7-F",
@@ -222,9 +224,17 @@ add("R41", "R", "100k", "r", {"1": "Q1B", "2": GND})
 add("D2", "D_V", "S1M", "sma", {"1": P5, "2": "RLY_N"},
     info=dict(digikey="https://www.digikey.com/en/products/result?keywords=S1M-13-F",
               datasheet="https://www.diodes.com/assets/Datasheets/ds28002.pdf"))    # flyback K=+5V
-add("J10", "TB_02", "RELAY", "tb2", {"1": P5, "2": "RLY_N"},
-    info=dict(digikey="https://www.digikey.com/en/products/detail/phoenix-contact/1715721/260631",
-              datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-2-508-1715721"))
+# onboard 10A/250VAC SPDT relay: coil pins 2&5, COM 1, NO 3, NC 4
+# (pin map decoded from the Omron datasheet + KiCad curated symbol)
+add("RLY1", "RELAY_G5LE", "G5LE-14 DC5", "relay",
+    {"2": P5, "5": "RLY_N",
+     "1": "RLY_COM", "3": "RLY_NO", "4": "RLY_NC"},
+    info=dict(digikey="https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5LE-14-DC5/280371",
+              datasheet="https://omronfs.omron.com/en_US/ecb/products/pdf/en-g5le.pdf"))
+add("J10", "TB_03L", "SPINDLE-SW", "tb3",
+    {"1": "RLY_COM", "2": "RLY_NO", "3": "RLY_NC"},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=1715734",
+              datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-3-508-1715734"))
 
 # --- aux buffered 5V output (future spindle PWM / isolator) -------------
 add("J11", "XH_02", "AUX", "xh2", {"1": "AUX", "2": GND},

@@ -49,8 +49,12 @@ internal to the board — the GPIO map and `config.yaml` are unchanged.
    FluidNC control-pin docs for the firmware you flash (verify the key
    name — v4 changed some control options).
 7. **Real connectors** (rev C was solder pads): Phoenix MKDS 5.08 screw
-   terminals for power/drivers/relay, JST-XH for limits/probe/E-stop/
+   terminals for power/drivers/spindle, JST-XH for limits/probe/E-stop/
    SD/aux.
+10. **Onboard spindle relay** (Omron G5LE-14 DC5, SPDT 10 A/250 VAC,
+   5 V coil) replaces the harvested off-board Songle. Q1 sinks the coil
+   (S1M flyback); contacts COM/NO/NC on J10 switch the spindle's AC
+   line. Wire the spindle through COM+NO so a dead board = spindle off.
 8. **SD module runs from 3.3 V** (proven on the bench; keeps its level
    shifter below ESP-safe voltages).
 9. **GPIO map carried over unchanged from the fabbed, verified rev C
@@ -84,7 +88,7 @@ axes:
 | J5/J6/J7 | JST-XH 2 | SIG, GND | X / Y / Z limit switch (closes to GND) |
 | J8 | JST-XH 2 | SIG, GND | probe |
 | J9 | JST-XH 2 | SIG, GND | E-stop (NC to GND) |
-| J10 | screw 2-pos | +5V, COIL− | spindle relay coil (Q1 low side, S1M flyback) |
+| J10 | screw 3-pos | COM, NO, NC | spindle AC switch (onboard G5LE-14 relay contacts) |
 | J11 | JST-XH 2 | AUX, GND | spare buffered 5 V output (future spindle PWM) |
 | J12 | screw 2-pos | +5V-EXT, GND | bench 5 V (JP1 → 2-3) |
 | J13 | JST-XH 6 | 3V3, GND, CS, MOSI, SCK, MISO | microSD module (**3.3 V feed**) |
@@ -112,6 +116,11 @@ still works before the EN lines are connected.
 6. H1–H4 = M3 mounting holes, put one near each corner.
 7. Solder-jumper alternative: if JP1 feels like a snag hazard, rotate it
    flat or swap for a 2-pos + default-closed trace you cut for bench use.
+8. **MAINS on the RLY1/J10 corner.** Keep the relay contact traces and
+   J10 in one corner, ≥ 6.4 mm creepage from ALL logic (slot the board
+   under the relay if convenient), trace width ≥ 1 mm, no ground pour
+   under the contact area. Coil side (pins 2/5) is logic — the relay
+   body is the isolation barrier (4 kV impulse rated).
 
 ## Regenerating / verifying
 

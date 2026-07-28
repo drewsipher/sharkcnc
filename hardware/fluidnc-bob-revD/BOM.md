@@ -20,6 +20,7 @@ passives/discretes use industry-standard MPNs.
 | LED1 | 5 mm green | **WP7113GD** (Kingbright) | — | 5 | any 5 mm LED |
 | LED2 | 5 mm red | **WP7113ID** (Kingbright) | — | 5 | any 5 mm LED |
 | F1 | Fuse 2 A 63 V, 1206 | **0466002.NR** (Littelfuse) | F1457CT-ND | 5 | Bourns SF-1206F200-2 (verified) |
+| RLY1 | Relay SPDT 10 A/250 VAC, 5 V coil | **G5LE-14 DC5** (Omron) | Z1011-ND (page verified) | 2 | TE OJ-SH-105LMH; the harvested Songle SRD-05VDC is the same class |
 
 ## Passives (0805 unless noted)
 
@@ -38,7 +39,8 @@ passives/discretes use industry-standard MPNs.
 | Ref | Part | MPN | DK PN | Qty (order) |
 |---|---|---|---|---|
 | (A1) | Socket strip 1×22, 2.54 mm ×2 | **PPTC221LFBN-RC** (Sullins) | — (page verified) | 3 |
-| J1, J10, J12 | Screw terminal 2-pos 5.08 | **1715721** (Phoenix MKDS 1,5/2-5,08) | — (page verified) | 4 |
+| J1, J12 | Screw terminal 2-pos 5.08 | **1715721** (Phoenix MKDS 1,5/2-5,08) | — (page verified) | 3 |
+| J10 | Screw terminal 3-pos 5.08 | **1715734** (Phoenix MKDS 1,5/3-5,08) | — (page verified) | 2 |
 | J2–J4 | Screw terminal 5-pos 5.08 | **1715750** (Phoenix MKDS 1,5/5-5,08) | — (page verified) | 4 |
 | J5–J9, J11 | JST XH header 2-pos vert | B2B-XH-A(LF)(SN) | — | 8 |
 | J13 | JST XH header 6-pos vert | B6B-XH-A(LF)(SN) | — | 2 |
@@ -67,7 +69,6 @@ soldering a board around it.
 
 - ESP32-S3-WROOM-1 N16R8 44-pin dual-USB-C devkit (existing)
 - microSD breakout module (existing, fed 3.3 V)
-- Songle 5 V relay for spindle (harvested off UCNCV4, off-board via J10)
 - M3 standoffs/screws (H1–H4)
 
 ## Electrical sanity notes
@@ -77,7 +78,11 @@ soldering a board around it.
   drive topology.
 - Worst-case buffer package current: 6 ch × 9 mA ≈ 54 mA < 75 mA abs max.
 - Buck load estimate: devkit WiFi bursts ≈ 350 mA + buffer 55 mA + SD
-  100 mA + relay 72 mA + LEDs ≈ 600 mA peak, ~300 mA typical → 1 A part.
+  100 mA + relay coil ≈ 80 mA + LEDs ≈ 600 mA peak, ~300 mA typical →
+  1 A part.
+- Relay contacts (J10 COM/NO/NC) switch the spindle's AC line: 10 A /
+  250 VAC rating vs the Sherline's ~1.5 A draw. Mains lives ONLY on the
+  RLY1-contact / J10 corner — see the layout checklist.
 - TVS: 40 V standoff sits above the 36 V rail (+ trim margin); clamps
   ≈ 64 V < TSR 1-4850WI's 72 V max input. Reversed input forward-biases
   the TVS and blows F1 — that's why F1 gets spares.

@@ -16,7 +16,9 @@ Quantity,Manufacturer Part Number,Digi-Key Part Number,Description,Customer Refe
 2,EEU-FC1H101,,Cap 100uF 50V electrolytic D8 P3.5,C1
 3,PPTC221LFBN-RC,,Socket strip 1x22 2.54mm,A1 socket rows
 1,ESP32-S3-DEVKITC-1-N8,,Espressif ESP32-S3 devkit (optional spare; verify row spacing),A1 spare
-4,1715721,,Phoenix MKDS 1.5/2-5.08 terminal 2-pos,J1 J10 J12
+3,1715721,,Phoenix MKDS 1.5/2-5.08 terminal 2-pos,J1 J12
+2,1715734,,Phoenix MKDS 1.5/3-5.08 terminal 3-pos,J10 spindle switch
+2,G5LE-14 DC5,Z1011-ND,Omron relay SPDT 10A/250VAC 5V coil,RLY1
 4,1715750,,Phoenix MKDS 1.5/5-5.08 terminal 5-pos,J2 J3 J4
 8,B2B-XH-A(LF)(SN),,JST XH header 2-pos vertical,J5-J9 J11
 2,B6B-XH-A(LF)(SN),,JST XH header 6-pos vertical,J13

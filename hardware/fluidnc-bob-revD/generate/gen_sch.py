@@ -87,6 +87,23 @@ for n in (2, 5):
 SYMS["TB_02L"] = dict(
     shapes=SYMS["TB_02"]["shapes"],
     pins=[(str(i + 1), "~", -7.62, -2.54 * i, 0, 3.81) for i in range(2)])
+SYMS["TB_03L"] = dict(
+    shapes=[rect(-3.81, -7.62, 3.81, 2.54)] +
+           [circle(0, -2.54 * i, 0.889) for i in range(3)],
+    pins=[(str(i + 1), "~", -7.62, -2.54 * i, 0, 3.81) for i in range(3)])
+# G5LE-14 SPDT relay: coil 2(+)/5(-) on the left, COM 1 / NO 3 / NC 4 right
+SYMS["RELAY_G5LE"] = dict(
+    shapes=[rect(-7.62, -7.62, 7.62, 7.62),
+            rect(-6.35, -3.81, -3.175, 3.81),           # coil box
+            line([(-3.175, 0), (0.635, 0)]),            # actuator dash
+            line([(3.81, -5.08), (2.54, 2.54)]),        # armature
+            line([(2.54, 5.08), (2.54, 3.81)]),         # NO stub
+            line([(5.08, 5.08), (5.08, 2.54), (4.445, 3.175), (5.08, 3.81)])],
+    pins=[("2", "COIL+", -12.7, 2.54, 0, 5.08),
+          ("5", "COIL-", -12.7, -2.54, 0, 5.08),
+          ("1", "COM", 12.7, -5.08, 180, 5.08),
+          ("3", "NO", 12.7, 5.08, 180, 5.08),
+          ("4", "NC", 12.7, 0, 180, 5.08)])
 # JST-XH: pins face LEFT
 for n in (2, 6):
     xh_body = [rect(-3.81, -(n - 1) * 2.54 - 2.54, 3.81, 2.54)] + \
@@ -165,8 +182,9 @@ PL = {
     "R42": (100.33, 220.98), "R43": (109.22, 226.06), "Q2": (118.11, 220.98),
     "R51": (120.65, 198.12), "LED2": (120.65, 208.28),
     # RELAY
-    "J10": (158.75, 220.98), "R40": (180.34, 228.6), "R41": (187.96, 233.68),
+    "R40": (180.34, 228.6), "R41": (187.96, 233.68),
     "D2": (190.5, 218.44), "Q1": (198.12, 228.6),
+    "RLY1": (215.9, 220.98), "J10": (242.57, 223.52),
     # INPUT CHANNELS (right band): ch_y = 167.64 + 17.78k
     **{f"R3{k}": (317.5, 167.64 + 17.78 * k) for k in range(5)},
     **{f"R2{k}": (330.2, 162.56 + 17.78 * k) for k in range(5)},
@@ -373,12 +391,17 @@ w(P("R41", "2"), (187.96, 241.3))
 gnd(187.96, 241.3)
 w(P("Q1", "2"), (200.66, 236.22))
 gnd(200.66, 236.22)
-w(P("J10", "1"), (166.37, 218.44))
-p5(166.37, 218.44)
-w(P("J10", "2"), P("Q1", "3"))   # RLY_N rail east to the collector
-jd(190.5, 223.52)                # D2 anode taps the rail
+# RLY_N: flyback anode -> Q1 collector -> coil- (one rail)
+w(P("D2", "2"), P("Q1", "3"), P("RLY1", "5"))
+jd(*P("Q1", "3"))
 w(P("D2", "1"), (190.5, 210.82))
 p5(190.5, 210.82)
+w(P("RLY1", "2"), (203.2, 215.9), (203.2, 213.36))   # coil+ -> +5V
+p5(203.2, 213.36)
+# contacts -> spindle switch terminal; distinct lanes, crossings only
+w(P("RLY1", "1"), (229.87, 226.06), (229.87, 223.52), P("J10", "1"))
+w(P("RLY1", "3"), (233.68, 215.9), (233.68, 226.06), P("J10", "2"))
+w(P("RLY1", "4"), (232.41, 220.98), (232.41, 228.6), P("J10", "3"))
 
 # --- input conditioning channels ----------------------------------------
 CHN = ["LIMX", "LIMY", "LIMZ", "PROBE", "ESTOP"]
@@ -490,8 +513,8 @@ def emit_lib_symbols(prefix=True):
     return "\n".join(out)
 
 # component label placement
-LEFT_BODIES = {"J2", "J3", "J4", "J1", "J10"}      # pins east: refs west
-RIGHT_BODIES = {"J5", "J6", "J7", "J8", "J9", "J13", "J11", "J12", "JP1"}
+LEFT_BODIES = {"J2", "J3", "J4", "J1"}      # pins east: refs west
+RIGHT_BODIES = {"J5", "J6", "J7", "J8", "J9", "J13", "J11", "J12", "JP1", "J10"}
 
 def label_pos(ref, sym, X, Y):
     if ref == "A1":
