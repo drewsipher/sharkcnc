@@ -526,6 +526,7 @@
       "netlist": "",
       "plot": "/home/drew/src/sharkcnc/hardware/fluidnc-bob/gerbers/",
       "specctra_dsn": "",
+      "step": "",
       "vrml": ""
     },
     "page_layout_descr_file": ""

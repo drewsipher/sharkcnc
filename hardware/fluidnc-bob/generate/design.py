@@ -30,10 +30,10 @@ DEVKIT_LEFT = [  # (pad, devkit pin name, net or None)
     (13, "GPIO3",  None),   # strapping
     (14, "GPIO46", None),   # strapping
     (15, "GPIO9",  None),
-    (16, "GPIO10", None),
-    (17, "GPIO11", None),
-    (18, "GPIO12", None),
-    (19, "GPIO13", None),
+    (16, "GPIO10", "SD_CS"),
+    (17, "GPIO11", "SD_MOSI"),
+    (18, "GPIO12", "SD_SCK"),
+    (19, "GPIO13", "SD_MISO"),
     (20, "GPIO14", None),
     (21, "5V",     P5V),
     (22, "GND",    GND),
@@ -46,9 +46,9 @@ DEVKIT_RIGHT = [
     (27, "GPIO2",  "LIMY_G"),
     (28, "GPIO42", "LIMZ_G"),
     (29, "GPIO41", "PROBE_G"),
-    (30, "GPIO40", "SD_SCK"),
-    (31, "GPIO39", "SD_MISO"),
-    (32, "GPIO38", "SD_MOSI"),
+    (30, "GPIO40", None),
+    (31, "GPIO39", None),
+    (32, "GPIO38", None),
     (33, "GPIO37", None),   # octal PSRAM
     (34, "GPIO36", None),   # octal PSRAM
     (35, "GPIO35", None),   # octal PSRAM
@@ -56,7 +56,7 @@ DEVKIT_RIGHT = [
     (37, "GPIO45", None),   # strapping
     (38, "GPIO48", None),   # onboard RGB LED on most clones
     (39, "GPIO47", None),
-    (40, "GPIO21", "SD_CS"),
+    (40, "GPIO21", None),
     (41, "GPIO20", None),   # native USB D+
     (42, "GPIO19", None),   # native USB D-
     (43, "GND",    GND),

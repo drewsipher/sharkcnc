@@ -48,7 +48,7 @@ power-net comparison). Unbuilt, rev C.
 |---|---|---|---|---|
 | X step / dir | 4 / 5 | | X / Y / Z limit | 1 / 2 / 42 |
 | Y step / dir | 6 / 7 | | Probe | 41 |
-| Z step / dir | 15 / 16 | | SD SCK / MISO / MOSI / CS | 40 / 39 / 38 / 21 |
+| Z step / dir | 15 / 16 | | SD SCK / MISO / MOSI / CS | 12 / 13 / 11 / 10 |
 | Spindle relay | 17 | | Aux out | 18 |
 
 Inputs: 10 k pullup to 3V3 + 1 k series + 100 nF on board.

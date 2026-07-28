@@ -62,10 +62,10 @@ probe:
   pin: gpio.41:low
 
 spi:
-  sck_pin: gpio.40
-  miso_pin: gpio.39
-  mosi_pin: gpio.38
+  sck_pin: gpio.12
+  miso_pin: gpio.13
+  mosi_pin: gpio.11
 
 sdcard:
-  cs_pin: gpio.21
+  cs_pin: gpio.10
   card_detect_pin: NO_PIN
