@@ -104,15 +104,21 @@ SYMS["RELAY_G5LE"] = dict(
           ("1", "COM", 12.7, -5.08, 180, 5.08),
           ("3", "NO", 12.7, 5.08, 180, 5.08),
           ("4", "NC", 12.7, 0, 180, 5.08)])
-# JST-XH: pins face LEFT
-for n in (2, 6):
-    xh_body = [rect(-3.81, -(n - 1) * 2.54 - 2.54, 3.81, 2.54)] + \
-              [rect(-1.27, -2.54 * i - 0.635, 0, -2.54 * i + 0.635)
-               for i in range(n)]
-    SYMS[f"XH_0{n}"] = dict(
-        shapes=xh_body,
-        pins=[(str(i + 1), "~", -7.62, -2.54 * i, 0, 3.81)
-              for i in range(n)])
+# Molex KK-254 2-pos: pins face LEFT
+SYMS["KK_02"] = dict(
+    shapes=[rect(-3.81, -5.08, 3.81, 2.54)] +
+           [rect(-1.27, -2.54 * i - 0.635, 0, -2.54 * i + 0.635)
+            for i in range(2)],
+    pins=[(str(i + 1), "~", -7.62, -2.54 * i, 0, 3.81) for i in range(2)])
+# 2x6 pin header (SD module, rev C pad map): odd pins left, even right
+SYMS["CONN_2x6"] = dict(
+    shapes=[rect(-3.81, -15.24, 3.81, 2.54)] +
+           [circle(-1.905, -2.54 * r, 0.635) for r in range(6)] +
+           [circle(1.905, -2.54 * r, 0.635) for r in range(6)],
+    pins=[(str(2 * r + 1), "~", -7.62, -2.54 * r, 0, 3.81)
+          for r in range(6)] +
+         [(str(2 * r + 2), "~", 7.62, -2.54 * r, 180, 3.81)
+          for r in range(6)])
 # TSR 1-4850WI: 1=Vin left, 2=GND bottom, 3=Vout right
 SYMS["TSR1"] = dict(shapes=[rect(-8.89, -6.35, 8.89, 6.35)],
                     pins=[("1", "VIN", -13.97, 2.54, 0, 5.08),
@@ -423,15 +429,20 @@ for k, (name, jref) in enumerate(zip(CHN, ["J5", "J6", "J7", "J8", "J9"])):
     gnd(355.6, t2[1] + 2.54)
 
 # --- SD + AUX ------------------------------------------------------------
-w(P("J13", "1"), (53.34, 231.14), (53.34, 228.6))
-p33(53.34, 228.6)
-w(P("J13", "2"), (53.34, 233.68), (53.34, 246.38))
-gnd(53.34, 246.38)
-for pad, net in [("3", "SD_CS"), ("4", "SD_MOSI"),
-                 ("5", "SD_SCK"), ("6", "SD_MISO")]:
+w(P("J13", "5"), (53.34, 236.22), (53.34, 233.68))
+p33(53.34, 233.68)
+for pad, net in [("7", "SD_MISO"), ("9", "SD_SCK")]:
     t = P("J13", pad)
     w(t, (48.26, t[1]))
     lbl(net, 48.26, t[1], 180)
+for pad, net in [("8", "SD_MOSI"), ("10", "SD_CS")]:
+    t = P("J13", pad)
+    w(t, (73.66, t[1]))
+    lbl(net, 73.66, t[1], 0)
+w(P("J13", "11"), (53.34, 243.84), (53.34, 246.38))
+gnd(53.34, 246.38)
+w(P("J13", "12"), (71.12, 243.84), (71.12, 246.38))
+gnd(71.12, 246.38)
 t = P("J11", "1")
 w(t, (48.26, t[1]))
 lbl("AUX", 48.26, t[1], 180)
@@ -517,6 +528,8 @@ LEFT_BODIES = {"J2", "J3", "J4", "J1"}      # pins east: refs west
 RIGHT_BODIES = {"J5", "J6", "J7", "J8", "J9", "J13", "J11", "J12", "JP1", "J10"}
 
 def label_pos(ref, sym, X, Y):
+    if ref == "J13":
+        return (X, Y - 5.08, "c"), (X, Y + 20.32, "c")
     if ref == "A1":
         return (X, Y - 33.02, "c"), (X, Y + 33.02, "c")
     if ref == "U1":

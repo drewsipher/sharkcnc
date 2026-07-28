@@ -49,8 +49,9 @@ internal to the board — the GPIO map and `config.yaml` are unchanged.
    FluidNC control-pin docs for the firmware you flash (verify the key
    name — v4 changed some control options).
 7. **Real connectors** (rev C was solder pads): Phoenix MKDS 5.08 screw
-   terminals for power/drivers/spindle, JST-XH for limits/probe/E-stop/
-   SD/aux.
+   terminals for power/drivers/spindle, Molex KK-254 (friction lock,
+   crimp housings in the BOM) for limits/probe/E-stop/aux; SD keeps the
+   rev C 2×6 header so the salvaged module plugs straight in.
 10. **Onboard spindle relay** (Omron G5LE-14 DC5, SPDT 10 A/250 VAC,
    5 V coil) replaces the harvested off-board Songle. Q1 sinks the coil
    (S1M flyback); contacts COM/NO/NC on J10 switch the spindle's AC
@@ -85,13 +86,13 @@ axes:
 |---|---|---|---|
 | J1 | screw 2-pos | +36V, GND | motor PSU (fused, TVS-protected) |
 | J2/J3/J4 | screw 5-pos | STEP, DIR, GND, +5V, EN− | FMD2740C: SP+, DIR+, (SP−+DIR− bridge), EN+, EN− |
-| J5/J6/J7 | JST-XH 2 | SIG, GND | X / Y / Z limit switch (closes to GND) |
-| J8 | JST-XH 2 | SIG, GND | probe |
-| J9 | JST-XH 2 | SIG, GND | E-stop (NC to GND) |
+| J5/J6/J7 | Molex KK-254 2 | SIG, GND | X / Y / Z limit switch (closes to GND) |
+| J8 | Molex KK-254 2 | SIG, GND | probe |
+| J9 | Molex KK-254 2 | SIG, GND | E-stop (NC to GND) |
 | J10 | screw 3-pos | COM, NO, NC | spindle AC switch (onboard G5LE-14 relay contacts) |
-| J11 | JST-XH 2 | AUX, GND | spare buffered 5 V output (future spindle PWM) |
+| J11 | Molex KK-254 2 | AUX, GND | spare buffered 5 V output (future spindle PWM) |
 | J12 | screw 2-pos | +5V-EXT, GND | bench 5 V (JP1 → 2-3) |
-| J13 | JST-XH 6 | 3V3, GND, CS, MOSI, SCK, MISO | microSD module (**3.3 V feed**) |
+| J13 | header 2×6 | 5=3V3, 7=MISO, 8=MOSI, 9=SCK, 10=CS, 11/12=GND | salvaged microSD module — **same pad map as fabbed rev C** |
 | JP1 | header 1×3 | BUCK / +5V / EXT | 5 V source select (shunt on 1-2 normally) |
 
 Driver interface is the bench-proven common-cathode sourcing: STEP→SP+,

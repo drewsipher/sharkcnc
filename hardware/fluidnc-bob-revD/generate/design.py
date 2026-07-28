@@ -100,8 +100,8 @@ FP = {  # footprint shorthands — ALL from KiCad's standard libs (3D incl.)
     "tb3":    "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-3-5.08_1x03_P5.08mm_Horizontal",
     "tb5":    "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-5-5.08_1x05_P5.08mm_Horizontal",
     "relay":  "Relay_THT:Relay_SPDT_Omron-G5LE-1",
-    "xh2":    "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical",
-    "xh6":    "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical",
+    "kk2":    "Connector_Molex:Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical",
+    "hdr2x6": "Connector_PinHeader_2.54mm:PinHeader_2x06_P2.54mm_Vertical",
     "hdr3":   "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
     "hole":   "MountingHole:MountingHole_3.2mm_M3_Pad",
 }
@@ -207,9 +207,9 @@ INPUTS = [("LIMX", 0, "J5", "LIM-X"), ("LIMY", 1, "J6", "LIM-Y"),
           ("LIMZ", 2, "J7", "LIM-Z"), ("PROBE", 3, "J8", "PROBE"),
           ("ESTOP", 4, "J9", "E-STOP")]
 for name, i, jref, jval in INPUTS:
-    add(jref, "XH_02", jval, "xh2", {"1": f"{name}_IN", "2": GND},
-        info=dict(digikey="https://www.digikey.com/en/products/result?keywords=B2B-XH-A(LF)(SN)",
-                  datasheet="https://www.jst-mfg.com/product/pdf/eng/eXH.pdf"))
+    add(jref, "KK_02", jval, "kk2", {"1": f"{name}_IN", "2": GND},
+        info=dict(digikey="https://www.digikey.com/en/products/result?keywords=22-23-2021",
+                  datasheet="https://www.molex.com/en-us/products/part-detail/22232021"))
     add(f"R2{i}", "R", "10k", "r", {"1": P3V3, "2": f"{name}_IN"})
     add(f"C2{i}", "C", "100nF", "c", {"1": f"{name}_IN", "2": GND})
     add(f"R3{i}", "R_H", "1k", "r", {"1": f"{name}_G", "2": f"{name}_IN"})
@@ -237,16 +237,18 @@ add("J10", "TB_03L", "SPINDLE-SW", "tb3",
               datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-3-508-1715734"))
 
 # --- aux buffered 5V output (future spindle PWM / isolator) -------------
-add("J11", "XH_02", "AUX", "xh2", {"1": "AUX", "2": GND},
-    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=B2B-XH-A(LF)(SN)",
-              datasheet="https://www.jst-mfg.com/product/pdf/eng/eXH.pdf"))
+add("J11", "KK_02", "AUX", "kk2", {"1": "AUX", "2": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=22-23-2021",
+              datasheet="https://www.molex.com/en-us/products/part-detail/22232021"))
 
-# --- microSD module: powered from 3V3 (proven safe on the bench) --------
-add("J13", "XH_06", "SD", "xh6",
-    {"1": P3V3, "2": GND, "3": "SD_CS", "4": "SD_MOSI",
-     "5": "SD_SCK", "6": "SD_MISO"},
-    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=B6B-XH-A(LF)(SN)",
-              datasheet="https://www.jst-mfg.com/product/pdf/eng/eXH.pdf"))
+# --- microSD module: 2x6 header, same pad map as the fabbed rev C J13
+# (salvaged module + existing cable fit unchanged); 3V3 feed, proven.
+# Pads 1-4 and 6 NC; 5=3V3, 7=MISO, 8=MOSI, 9=SCK, 10=CS, 11/12=GND.
+add("J13", "CONN_2x6", "SD", "hdr2x6",
+    {"5": P3V3, "7": "SD_MISO", "8": "SD_MOSI", "9": "SD_SCK",
+     "10": "SD_CS", "11": GND, "12": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=PRPC006DAAN-RC",
+              datasheet="https://www.digikey.com/en/products/result?keywords=PRPC006DAAN-RC"))
 
 for i in range(1, 5):
     add(f"H{i}", "HOLE", "M3", "hole", {})

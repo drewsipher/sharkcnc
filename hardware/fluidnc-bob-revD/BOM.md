@@ -42,18 +42,19 @@ passives/discretes use industry-standard MPNs.
 | J1, J12 | Screw terminal 2-pos 5.08 | **1715721** (Phoenix MKDS 1,5/2-5,08) | — (page verified) | 3 |
 | J10 | Screw terminal 3-pos 5.08 | **1715734** (Phoenix MKDS 1,5/3-5,08) | — (page verified) | 2 |
 | J2–J4 | Screw terminal 5-pos 5.08 | **1715750** (Phoenix MKDS 1,5/5-5,08) | — (page verified) | 4 |
-| J5–J9, J11 | JST XH header 2-pos vert | B2B-XH-A(LF)(SN) | — | 8 |
-| J13 | JST XH header 6-pos vert | B6B-XH-A(LF)(SN) | — | 2 |
-| — | XH housing 2-pos | XHP-2 | — | 10 |
-| — | XH housing 6-pos | XHP-6 | — | 2 |
-| — | XH crimp contact | SXH-001T-P0.6 | — | 50 |
+| J5–J9, J11 | Molex KK-254 header 2-pos, friction lock | **22-23-2021** (Molex) | — (mfr page verified) | 8 |
+| — | KK-254 housing 2-pos w/ ramp | **22-01-3027** (Molex) | — (mfr page verified) | 10 |
+| — | KK-254 crimp terminal (2759 series, 22–30 AWG) | 08-50-0114 (Molex) | — | 50 |
+| J13 | Pin header 2×6, 2.54 mm (SD module, rev C pad map) | PRPC006DAAN-RC (Sullins) | — | 2 |
 | JP1 | Pin header 1×40 breakaway (cut 3) | PRPC040SAAN-RC (Sullins) | — | 1 |
 | — | Jumper shunt 2.54 | SPC02SYAN (Sullins) | — | 5 |
 | (U1) | DIP-20 socket | — on hand (optional) | — | — |
 
-Crimp-shy alternative for the XH inputs: pre-crimped XH jumper wire sets
-(e.g. DigiKey "JST XH pre-crimped leads" or Adafruit 4873-style) — the
-board side is identical.
+Crimp-shy alternative for the KK inputs: pre-crimped KK/2759-series
+leads (search "Molex KK 254 pre-crimped 22AWG") — the board side is
+identical. J13 mates with the salvaged SD module's existing 2×6 cable
+(pad map identical to the fabbed rev C board: 5=3V3, 7=MISO, 8=MOSI,
+9=SCK, 10=CS, 11/12=GND, rest NC).
 
 ## Devkit (A1)
 
@@ -68,7 +69,7 @@ soldering a board around it.
 ## Not ordered (on hand / off-board)
 
 - ESP32-S3-WROOM-1 N16R8 44-pin dual-USB-C devkit (existing)
-- microSD breakout module (existing, fed 3.3 V)
+- microSD breakout module (salvaged, fed 3.3 V via J13 pin 5)
 - M3 standoffs/screws (H1–H4)
 
 ## Electrical sanity notes

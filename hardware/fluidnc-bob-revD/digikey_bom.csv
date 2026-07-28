@@ -20,10 +20,9 @@ Quantity,Manufacturer Part Number,Digi-Key Part Number,Description,Customer Refe
 2,1715734,,Phoenix MKDS 1.5/3-5.08 terminal 3-pos,J10 spindle switch
 2,G5LE-14 DC5,Z1011-ND,Omron relay SPDT 10A/250VAC 5V coil,RLY1
 4,1715750,,Phoenix MKDS 1.5/5-5.08 terminal 5-pos,J2 J3 J4
-8,B2B-XH-A(LF)(SN),,JST XH header 2-pos vertical,J5-J9 J11
-2,B6B-XH-A(LF)(SN),,JST XH header 6-pos vertical,J13
-10,XHP-2,,JST XH housing 2-pos,cables
-2,XHP-6,,JST XH housing 6-pos,SD cable
-50,SXH-001T-P0.6,,JST XH crimp contact,cables
+8,22-23-2021,,Molex KK-254 header 2-pos friction lock,J5-J9 J11
+10,22-01-3027,,Molex KK-254 housing 2-pos,cables
+50,08-50-0114,,Molex KK-254 crimp terminal 2759 22-30AWG,cables
+2,PRPC006DAAN-RC,,Pin header 2x6 2.54mm,J13 SD module
 1,PRPC040SAAN-RC,,Pin header 1x40 breakaway 2.54 (cut 3 for JP1),JP1
 5,SPC02SYAN,,Jumper shunt 2.54,JP1
