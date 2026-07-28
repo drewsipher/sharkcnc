@@ -33,10 +33,10 @@ axes:
     acceleration_mm_per_sec2: 40
     max_travel_mm: 228
     motor0:
-      limit_neg_pin: gpio.1:low
+      limit_neg_pin: gpio.42:low
       standard_stepper:
-        step_pin: gpio.4
-        direction_pin: gpio.5
+        step_pin: gpio.18
+        direction_pin: gpio.17
   y:
     steps_per_mm: 1259.84
     max_rate_mm_per_min: 700
@@ -45,18 +45,18 @@ axes:
     motor0:
       limit_neg_pin: gpio.2:low
       standard_stepper:
-        step_pin: gpio.6
-        direction_pin: gpio.7
+        step_pin: gpio.16
+        direction_pin: gpio.15
   z:
     steps_per_mm: 1259.84
     max_rate_mm_per_min: 400
     acceleration_mm_per_sec2: 25
     max_travel_mm: 158
     motor0:
-      limit_neg_pin: gpio.42:low
+      limit_neg_pin: gpio.1:low
       standard_stepper:
-        step_pin: gpio.15
-        direction_pin: gpio.16
+        step_pin: gpio.7
+        direction_pin: gpio.6
 
 probe:
   pin: gpio.41:low

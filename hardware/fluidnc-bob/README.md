@@ -46,10 +46,10 @@ power-net comparison). Unbuilt, rev C.
 
 | Signal | GPIO | | Signal | GPIO |
 |---|---|---|---|---|
-| X step / dir | 4 / 5 | | X / Y / Z limit | 1 / 2 / 42 |
-| Y step / dir | 6 / 7 | | Probe | 41 |
-| Z step / dir | 15 / 16 | | SD SCK / MISO / MOSI / CS | 12 / 13 / 11 / 10 |
-| Spindle relay | 17 | | Aux out | 18 |
+| X step / dir | 18 / 17 | | X / Y / Z limit | 42 / 2 / 1 |
+| Y step / dir | 16 / 15 | | Probe | 41 |
+| Z step / dir | 7 / 6 | | SD SCK / MISO / MOSI / CS | 12 / 13 / 11 / 10 |
+| Spindle relay | 5 | | Aux out | 4 |
 
 Inputs: 10 k pullup to 3V3 + 1 k series + 100 nF on board.
 
