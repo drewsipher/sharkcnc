@@ -1,4 +1,4 @@
-# fluidnc-bob rev D — ESP32-S3 FluidNC breakout, single 36 V supply
+# fluidnc-bob rev D — ESP32-S3 FluidNC breakout, external 5 V logic supply
 
 Successor to the rev C board, folding in everything learned during the
 2026-07-27 bench bring-up. **Deliverable = schematic + verified netlist +
@@ -27,15 +27,22 @@ internal to the board — the GPIO map and `config.yaml` are unchanged.
 
 ## What changed vs rev C (and why)
 
-1. **Onboard 36 V→5 V buck (Traco TSR 1-4850WI, 9–72 V in, 1 A).** One
-   power input from the motor PSU — no separate 5 V supply. Bring-up
-   fact that forced this: the devkit does NOT bridge USB power to its
-   5 V pin, so the board rail must always be supplied externally.
-2. **Fuse (2 A/63 V) + SMBJ40A TVS** on the 36 V input. Reversed input
-   forward-biases the TVS and blows the fuse (order spares).
-3. **`5V-SRC` jumper (JP1):** 1-2 = buck (normal), 2-3 = `5V-EXT`
-   terminal (J12) for USB-free bench work with a lab supply. USB and
-   board 5 V simultaneously is safe on this devkit (verified isolated).
+1. **External 5 V logic supply into J1** (a separate regulated wall-wart,
+   ~1 A) → fuse → TVS → +5 V rail. The rev D onboard 36 V→5 V buck
+   (TSR 1-4850WI) was dropped: it was the priciest part (~$26 CAD) with no
+   cheap 1 A / wide-input SIP equivalent, and the 36 V motor bus is
+   transient-hostile (stepper regen) for a buck input. The steppers still
+   run from the 36 V PSU directly, off-board. Bring-up fact that still
+   applies: the devkit does NOT bridge USB power to its 5 V pin, so the
+   board rail must always be supplied.
+2. **Fuse (2 A) + SMBJ5.0A TVS** on the 5 V input. The TVS clamps
+   overvoltage and, on a reverse-wired input, forward-conducts to blow the
+   fuse before anything downstream sees reverse polarity (order spares).
+   USB and board 5 V simultaneously is safe on this devkit (isolated).
+3. **Single 5 V source** — the rev D `5V-SRC` jumper (JP1) and bench
+   `5V-EXT` terminal (J12) are removed; with one external feed there is
+   nothing to select. (Its footprint is free for a future ideal-diode
+   P-FET if reverse protection without blowing F1 is ever wanted.)
 4. **SN74AHCT541N at a full 5 V** — TTL V_IH (2 V) accepts the ESP's
    3.3 V directly; the rev C GS1A VCC-drop hack is gone. Step/dir
    outputs get **100 Ω series resistors**: ~9 mA per driver opto
@@ -84,16 +91,14 @@ axes:
 
 | Ref | Type | Pins | Goes to |
 |---|---|---|---|
-| J1 | screw 2-pos | +36V, GND | motor PSU (fused, TVS-protected) |
+| J1 | screw 2-pos | +5V, GND | external regulated 5 V supply (fused, TVS-protected) |
 | J2/J3/J4 | screw 5-pos | STEP, DIR, GND, +5V, EN− | FMD2740C: SP+, DIR+, (SP−+DIR− bridge), EN+, EN− |
 | J5/J6/J7 | Molex KK-254 2 | SIG, GND | X / Y / Z limit switch (closes to GND) |
 | J8 | Molex KK-254 2 | SIG, GND | probe |
 | J9 | Molex KK-254 2 | SIG, GND | E-stop (NC to GND) |
 | J10 | screw 3-pos | COM, NO, NC | spindle AC switch (onboard G5LE-14 relay contacts) |
 | J11 | Molex KK-254 2 | AUX, GND | spare buffered 5 V output (future spindle PWM) |
-| J12 | screw 2-pos | +5V-EXT, GND | bench 5 V (JP1 → 2-3) |
 | J13 | header 2×6 | 5=3V3, 7=MISO, 8=MOSI, 9=SCK, 10=CS, 11/12=GND | salvaged microSD module — **same pad map as fabbed rev C** |
-| JP1 | header 1×3 | BUCK / +5V / EXT | 5 V source select (shunt on 1-2 normally) |
 
 Driver interface is the bench-proven common-cathode sourcing: STEP→SP+,
 DIR→DIR+, GND→SP−&DIR− bridge; step/dir stay **active high** in config
@@ -106,17 +111,18 @@ still works before the EN lines are connected.
    fabbed board — no row-spacing gamble this time. Still check the
    devkit's printed pin legend against `DEVKIT_LEFT/RIGHT` in
    `generate/design.py` (pin 1 = 3V3, antenna end).
-2. 36 V nets (J1, F1, D1, C1, C2, U2.1): ≥ 0.5 mm clearance, short and
-   wide; keep them away from the limit/probe/SD signal area.
-3. TSR buck: C1/C2 close to U2.1; keep the buck a few cm from the ESP
-   antenna end.
+2. 5 V input nets (J1, F1, D1): keep F1 in series on J1.1 and the D1 TVS
+   right at the connector; short/wide traces into the +5 V pour.
+3. Local decoupling: C3/C4/C5 close to their loads (U1 VCC + devkit 5 V);
+   keep the J1 input a few cm from the ESP antenna end.
 4. Single-point ground at the supply; motor power never crosses the
    logic ground pour (same rule as rev C).
 5. LED2/EN block near the driver terminals so the "MOTORS OFF" light is
    visible at the machine.
 6. H1–H4 = M3 mounting holes, put one near each corner.
-7. Solder-jumper alternative: if JP1 feels like a snag hazard, rotate it
-   flat or swap for a 2-pos + default-closed trace you cut for bench use.
+7. Power input: silk J1 clearly as **+5V / GND** — it is now a 5 V
+   terminal, not 36 V. A reversed or over-voltage supply is caught only by
+   F1 + D1, so keep that pair tight to the connector.
 8. **MAINS on the RLY1/J10 corner.** Keep the relay contact traces and
    J10 in one corner, ≥ 6.4 mm creepage from ALL logic (slot the board
    under the relay if convenient), trace width ≥ 1 mm, no ground pour

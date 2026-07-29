@@ -55,7 +55,7 @@ for p in sorted(kicad_parts - want_parts, key=sorted):
     net = next(n for n, pp in kicad.items() if pp == p)
     print(f"UNEXPECTED kicad net {net}: {sorted(p)}")
     ok = False
-for pn in ("+5V", "+3V3", "GND", "+36V"):
+for pn in ("+5V", "+3V3", "GND"):
     if kicad.get(pn) != want[pn]:
         print(f"NAME MISMATCH {pn}: diff "
               f"{sorted(kicad.get(pn, frozenset()) ^ want[pn])}")

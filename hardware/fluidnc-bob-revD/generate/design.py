@@ -1,8 +1,11 @@
 """Single source of truth for the fluidnc-bob board — rev D.
 
 Rev D goals (everything learned bringing up rev C):
-  * Single 36 V input from the motor PSU; onboard TSR 1-4850WI buck
-    (9-72 V in, 5 V/1 A out) makes the logic rail — no separate 5 V supply.
+  * Single external 5 V supply (regulated wall-wart, ~1 A) into J1 ->
+    fuse (2 A) -> SMBJ5.0A TVS -> +5 V rail. The rev D onboard 36 V->5 V
+    buck (TSR 1-4850WI) was dropped: it was the single most expensive part
+    and a 1 A/72 V-in/SIP buck has no cheap equivalent. The steppers still
+    run from the 36 V motor PSU directly; only the logic rail changed.
     (Bring-up fact: the devkit does NOT bridge USB power to its 5 V pin,
     so the board rail must always be supplied; USB+board power is safe.)
   * SN74AHCT541N at a full 5 V (TTL V_IH=2 V accepts 3.3 V directly) —
@@ -30,8 +33,7 @@ at 5 V through the internal ~270R. EN is opto too: +5V->EN+, EN-->Q2.
 """
 
 # net names --------------------------------------------------------------
-P36I, P36, P5B, P5, P5X, P3V3, GND = ("+36V_IN", "+36V", "+5V_BUCK",
-                                      "+5V", "+5V_EXT", "+3V3", "GND")
+P5I, P5, P3V3, GND = ("+5V_IN", "+5V", "+3V3", "GND")
 
 # devkit socket A1 = left column (antenna end = pin 1)
 DEVKIT_LEFT = [   # (socket pin, devkit legend, net or None)
@@ -121,29 +123,20 @@ add("A1", "ESP32_S3_DevKit_44", "ESP32-S3-DevKit-44", "socket",
         digikey="https://www.digikey.com/en/products/detail/espressif-systems/ESP32-S3-DEVKITC-1-N8/15199021",
         datasheet="https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide.html"))
 
-# --- power entry: 36V -> fuse -> TVS/bulk -> buck -> jumper -> +5V ------
-add("J1", "TB_02", "36V-IN", "tb2", {"1": P36I, "2": GND},
+# --- power entry: external 5V -> fuse -> TVS -> +5V rail ----------------
+# J1 -> F1(2A) -> +5V; D1 (SMBJ5.0A) clamps the rail AND crowbars a
+# reverse-wired input (forward-conducts, blows F1). Fed by a separate
+# regulated 5 V wall-wart supply (Drew's board). The 36 V buck front-end
+# (U2 buck, C1/C2 bulk, JP1 source-select, J12 bench terminal) is gone.
+add("J1", "TB_02", "5V-IN", "tb2", {"1": P5I, "2": GND},
     info=dict(digikey="https://www.digikey.com/en/products/detail/phoenix-contact/1715721/260631",
               datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-2-508-1715721"))
-add("F1", "Fuse_H", "2A", "fuse", {"1": P36I, "2": P36},
+add("F1", "Fuse_H", "2A", "fuse", {"1": P5I, "2": P5},
     info=dict(digikey="https://www.digikey.com/en/products/detail/littelfuse-inc/0466002.NR/F1457CT-ND/521355",
               datasheet="https://www.digikey.com/en/products/result?keywords=0466002.NR"))
-add("D1", "D_V", "SMBJ40A", "smb", {"1": P36, "2": GND},
-    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=SMBJ40A",
-              datasheet="https://www.digikey.com/en/products/result?keywords=SMBJ40A"))   # K=+36V, A=GND
-add("C1", "C_Pol", "100uF/50V", "cp", {"1": P36, "2": GND})
-add("C2", "C", "100nF", "c", {"1": P36, "2": GND})
-add("U2", "TSR1", "TSR 1-4850WI", "tsr1",
-    {"1": P36, "2": GND, "3": P5B},
-    info=dict(digikey="https://www.digikey.com/en/products/detail/traco-power/TSR-1-4850WI/10438384",
-              datasheet="https://www.tracopower.com/model/tsr-1-4850wi"))
-# 5V source select: 1-2 = buck (normal), 2-3 = external bench 5V
-add("JP1", "HDR_03", "5V-SRC", "hdr3", {"1": P5B, "2": P5, "3": P5X},
-    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=PRPC040SAAN-RC",
-              datasheet="https://www.digikey.com/en/products/result?keywords=PRPC040SAAN-RC"))
-add("J12", "TB_02", "5V-EXT", "tb2", {"1": P5X, "2": GND},
-    info=dict(digikey="https://www.digikey.com/en/products/detail/phoenix-contact/1715721/260631",
-              datasheet="https://www.phoenixcontact.com/en-us/products/printed-circuit-board-terminal-mkds-15-2-508-1715721"))
+add("D1", "D_V", "SMBJ5.0A", "smb", {"1": P5, "2": GND},
+    info=dict(digikey="https://www.digikey.com/en/products/result?keywords=SMBJ5.0A",
+              datasheet="https://www.digikey.com/en/products/result?keywords=SMBJ5.0A"))   # K=+5V, A=GND (TVS + reverse crowbar w/ F1)
 add("C3", "C_1206", "10uF/25V", "c1206", {"1": P5, "2": GND})
 add("C4", "C", "100nF", "c", {"1": P5, "2": GND})
 add("R50", "R", "1k", "r", {"1": P5, "2": "LEDR"})

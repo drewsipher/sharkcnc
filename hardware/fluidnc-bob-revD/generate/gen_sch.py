@@ -165,14 +165,12 @@ def official_power_symbol(name):
     return txt[i:j + 1].replace(key, f'(symbol "power:{name}"', 1)
 
 OFFICIAL_POWER = {n: official_power_symbol(n)
-                  for n in ("GND", "+5V", "+3V3", "+36V", "PWR_FLAG")}
+                  for n in ("GND", "+5V", "+3V3", "PWR_FLAG")}
 
 # ------------------------------------------------------------- placement
 PL = {
     # POWER (top band)
     "J1": (40.64, 45.72), "F1": (63.5, 43.18), "D1": (80.01, 48.26),
-    "C1": (92.71, 46.99), "C2": (105.41, 46.99), "U2": (127.0, 45.72),
-    "JP1": (161.29, 43.18), "J12": (163.83, 58.42),
     "C3": (176.53, 46.99), "C4": (186.69, 46.99),
     "R50": (196.85, 48.26), "LED1": (196.85, 58.42),
     # DEVKIT + BUFFER (rev C geometry)
@@ -205,7 +203,7 @@ PL = {
 }
 
 TEXTS = [
-    ("POWER: 36V IN -> FUSE -> TVS -> BUCK -> 5V-SRC JUMPER", 38.1, 30.48),
+    ("POWER: EXT 5V IN -> FUSE(2A) -> TVS(SMBJ5.0A) -> +5V RAIL", 38.1, 30.48),
     ("DRIVER TERMINALS: STEP DIR GND +5V(EN+) EN-", 33.02, 105.41),
     ("74AHCT541 @ 5V", 154.94, 100.33),
     ("R10-R17: 100k boot pulldowns", 185.42, 168.91),
@@ -236,36 +234,20 @@ def w(*pts):
 def gnd(x, y):  POWER.append(("GND", round(x, 2), round(y, 2)))
 def p5(x, y):   POWER.append(("+5V", round(x, 2), round(y, 2)))
 def p33(x, y):  POWER.append(("+3V3", round(x, 2), round(y, 2)))
-def p36(x, y):  POWER.append(("+36V", round(x, 2), round(y, 2)))
 def jd(x, y):   JUNC.append((round(x, 2), round(y, 2)))
 def lbl(name, x, y, ang):
     LABELS.append((name, round(x, 2), round(y, 2), ang))
 
-# --- power entry ---------------------------------------------------------
+# --- power entry: external 5V -> fuse -> TVS -> +5V rail -----------------
 w(P("J1", "1"), (53.34, 45.72), (53.34, 43.18), P("F1", "1"))
 w(P("J1", "2"), (50.8, 48.26), (50.8, 50.8))
 gnd(50.8, 50.8)
 FLAGS.append((50.8, 48.26)); jd(50.8, 48.26)
-# +36V rail: fuse -> TVS -> bulk -> HF -> buck VIN
-w(P("F1", "2"), P("U2", "1"))
-for x in (73.66, 76.2, 80.01, 92.71, 105.41):
-    jd(x, 43.18)
-p36(73.66, 43.18)
-FLAGS.append((76.2, 43.18))
+# fuse output IS the +5V rail; D1 (SMBJ5.0A) clamps it / crowbars reverse
+w(P("F1", "2"), P("D1", "1"))
+jd(73.66, 43.18);  p5(73.66, 43.18)
+jd(76.2, 43.18);   FLAGS.append((76.2, 43.18))
 w(P("D1", "2"), (80.01, 55.88));   gnd(80.01, 55.88)
-w(P("C1", "2"), (92.71, 53.34));   gnd(92.71, 53.34)
-w(P("C2", "2"), (105.41, 53.34));  gnd(105.41, 53.34)
-w(P("U2", "2"), (127.0, 59.69));   gnd(127.0, 59.69)
-# buck out -> jumper pin 1 (straight)
-w(P("U2", "3"), P("JP1", "1"))
-# jumper pin 2 = +5V rail
-w(P("JP1", "2"), (148.59, 45.72), (148.59, 35.56))
-p5(148.59, 35.56)
-FLAGS.append((148.59, 38.1)); jd(148.59, 38.1)
-# jumper pin 3 -> external 5V terminal
-w(P("JP1", "3"), (151.13, 48.26), (151.13, 58.42), P("J12", "1"))
-w(P("J12", "2"), (153.67, 60.96), (153.67, 63.5))
-gnd(153.67, 63.5)
 # 5V housekeeping: C3, C4, PWR LED
 for ref in ("C3", "C4"):
     x = PL[ref][0]
@@ -525,7 +507,7 @@ def emit_lib_symbols(prefix=True):
 
 # component label placement
 LEFT_BODIES = {"J2", "J3", "J4", "J1"}      # pins east: refs west
-RIGHT_BODIES = {"J5", "J6", "J7", "J8", "J9", "J13", "J11", "J12", "JP1", "J10"}
+RIGHT_BODIES = {"J5", "J6", "J7", "J8", "J9", "J13", "J11", "J10"}
 
 def label_pos(ref, sym, X, Y):
     if ref == "J13":
@@ -648,7 +630,7 @@ for name, x, y, ang in LABELS:
 doc = f'''(kicad_sch (version 20231120) (generator "gen_sch.py")
   (uuid "{ROOT_UUID}")
   (paper "A3")
-  (title_block (title "fluidnc-bob rev D — ESP32-S3 FluidNC breakout, 36V single-supply")
+  (title_block (title "fluidnc-bob rev D — ESP32-S3 FluidNC breakout, external 5V logic supply")
     (date "2026-07-28") (rev "D") (company "SharkCNC"))
   (lib_symbols
 {emit_lib_symbols()}
