@@ -77,6 +77,7 @@ private:
 
     // DRO
     QLabel* stateLabel_;
+    QLabel* pinsLabel_;
     QLabel* work_[3];
     QLabel* mach_[3];
     QLabel* feedLabel_;

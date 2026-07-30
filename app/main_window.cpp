@@ -238,6 +238,24 @@ MainWindow::MainWindow() {
                     QString("font-size:20px;font-weight:bold;color:%1")
                         .arg(color));
                 unlockBtn_->setVisible(st.state == MachineState::Alarm);
+                // live pin states from the Pn: field (P=probe, XYZ=limits)
+                {
+                    QString pins = QString::fromStdString(st.pins);
+                    QStringList badges;
+                    if (pins.contains('P')) badges << "PROBE";
+                    QString lims;
+                    for (QChar c : QString("XYZ"))
+                        if (pins.contains(c)) lims += c;
+                    if (!lims.isEmpty()) badges << ("LIM:" + lims);
+                    pinsLabel_->setVisible(!badges.isEmpty());
+                    pinsLabel_->setText(badges.join("  "));
+                    // probe touch = amber; any limit = red wins
+                    pinsLabel_->setStyleSheet(
+                        QString("font-size:14px;font-weight:bold;"
+                                "padding:1px 6px;border-radius:3px;"
+                                "background:%1;color:#111")
+                            .arg(lims.isEmpty() ? "#ffb300" : "#f44336"));
+                }
                 const double wv[3] = {st.wx, st.wy, st.wz};
                 const double mv[3] = {st.mx, st.my, st.mz};
                 for (int i = 0; i < 3; ++i) {
@@ -404,7 +422,10 @@ QWidget* MainWindow::buildDroBox() {
     unlockBtn_->setStyleSheet(
         "background:#c62828;font-weight:bold;border-color:#c62828");
     connect(unlockBtn_, &QPushButton::clicked, this, [this] { mc_->unlock(); });
+    pinsLabel_ = new QLabel;
+    pinsLabel_->setVisible(false);
     top->addWidget(stateLabel_);
+    top->addWidget(pinsLabel_);
     top->addStretch(1);
     top->addWidget(unlockBtn_);
     v->addLayout(top);
