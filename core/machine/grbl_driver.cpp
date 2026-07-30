@@ -86,6 +86,26 @@ Status GrblDriver::lastStatus() const {
 }
 
 void GrblDriver::requestStatus() { writeRealtime('?'); }
+
+void GrblDriver::zeroWork(const std::string& axes) {
+    std::string cmd = "G10 L20 P0";
+    for (char a : axes) { cmd += ' '; cmd += a; cmd += '0'; }
+    sendCommand(cmd);
+    Status snap;
+    {
+        std::lock_guard lk(m_);
+        for (char a : axes) {
+            switch (std::toupper(static_cast<unsigned char>(a))) {
+                case 'X': status_.wcoX = status_.mx; status_.wx = 0; break;
+                case 'Y': status_.wcoY = status_.my; status_.wy = 0; break;
+                case 'Z': status_.wcoZ = status_.mz; status_.wz = 0; break;
+            }
+        }
+        status_.hasWco = true;
+        snap = status_;
+    }
+    if (cb_.onStatus) cb_.onStatus(snap);
+}
 void GrblDriver::feedHold() { writeRealtime('!'); }
 void GrblDriver::resume() { writeRealtime('~'); }
 void GrblDriver::jogCancel() { writeRealtime(0x85); }

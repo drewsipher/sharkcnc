@@ -71,6 +71,10 @@ public:
 
     // --- immediate commands -------------------------------------------
     void requestStatus();                  // '?'
+    // G10 L20 P0: zero work coords on the given axes ("X", "XY", ...).
+    // Applies the new WCO locally at once - grbl only reports WCO: every
+    // N status frames, which made the DRO lag seconds after zeroing.
+    void zeroWork(const std::string& axes);
     void feedHold();                       // '!'
     void resume();                         // '~'
     void softReset();                      // 0x18: abort everything
