@@ -32,6 +32,10 @@ public:
     // Probed surface: colored, Z-exaggerated relief of a HeightMap.
     void setHeightMap(const scnc::HeightMap& m, double exaggeration);
     void clearHeightMap();
+    // Stock wireframes: estimated block (amber) + measured top (green).
+    void setStockOverlay(const std::vector<float>& estimateLines,
+                         const std::vector<float>& measuredLines);
+    void clearStockOverlay();
 
     void setPerspective(bool on);
     bool perspective() const { return perspective_; }
@@ -65,15 +69,19 @@ private:
     QOpenGLBuffer meshVbo_{QOpenGLBuffer::VertexBuffer};
     QOpenGLBuffer hmapVbo_{QOpenGLBuffer::VertexBuffer};
     QOpenGLBuffer hmapWireVbo_{QOpenGLBuffer::VertexBuffer};
+    QOpenGLBuffer stockEstVbo_{QOpenGLBuffer::VertexBuffer};
+    QOpenGLBuffer stockMeasVbo_{QOpenGLBuffer::VertexBuffer};
     QOpenGLVertexArrayObject cutVao_, rapidVao_, gridVao_, meshVao_,
-        hmapVao_, hmapWireVao_;
+        hmapVao_, hmapWireVao_, stockEstVao_, stockMeasVao_;
     int cutCount_ = 0, rapidCount_ = 0, gridCount_ = 0, meshCount_ = 0,
-        hmapCount_ = 0, hmapWireCount_ = 0;
+        hmapCount_ = 0, hmapWireCount_ = 0, stockEstCount_ = 0,
+        stockMeasCount_ = 0;
     bool buffersDirty_ = false, gridDirty_ = true, meshDirty_ = false,
-         hmapDirty_ = false;
+         hmapDirty_ = false, stockDirty_ = false;
     std::vector<float> meshData_;   // pos+normal, uploaded lazily in paintGL
     std::vector<float> hmapData_;   // pos+normal+color (9 floats/vertex)
     std::vector<float> hmapWire_;   // grid wireframe line pairs
+    std::vector<float> stockEst_, stockMeas_;
 
     // camera: quaternion arcball orientation of the scene
     QQuaternion rot_;

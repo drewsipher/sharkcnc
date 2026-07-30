@@ -1,5 +1,6 @@
 add_library(scnc_core STATIC
   gcode/parser.cpp
+  gcode/backlash.cpp
   gcode/warp.cpp
   gcode/resume.cpp
   heightmap/heightmap.cpp

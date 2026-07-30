@@ -3,7 +3,10 @@
 #include <QAbstractSpinBox>
 #include <QApplication>
 #include <QComboBox>
+#include <QCheckBox>
+#include <QDialogButtonBox>
 #include <QDockWidget>
+#include <QFormLayout>
 #include <QDoubleSpinBox>
 #include <QFile>
 #include <QFileDialog>
@@ -38,8 +41,10 @@ namespace {
 }  // namespace
 
 #include "cam_panel.h"
+#include "stock_panel.h"
 #include "heightmap_dialog.h"
 #include "gcode/resume.h"
+#include "gcode/backlash.h"
 #include "gcode/warp.h"
 #include "gcode_view.h"
 #include "gcode_view3d.h"
@@ -77,6 +82,20 @@ MainWindow::MainWindow() {
     camDock->setFeatures(QDockWidget::DockWidgetMovable |
                          QDockWidget::DockWidgetClosable);
     cam_ = new CamPanel(camDock);
+    auto* stock = new StockPanel(mc_, cam_);
+    cam_->addExtraTab(stock, "Stock");
+    connect(stock, &StockPanel::overlayReady, this,
+            [this](const std::vector<float>& est,
+                   const std::vector<float>& meas) {
+                if (!view3d_) {
+                    statusBar()->showMessage(
+                        "3D view unavailable (no OpenGL)", 5000);
+                    return;
+                }
+                view3d_->setStockOverlay(est, meas);
+                viewStack_->setCurrentIndex(1);
+                view3d_->viewIso();
+            });
     camDock->setWidget(cam_);
     addDockWidget(Qt::RightDockWidgetArea, camDock);
     connect(cam_, &CamPanel::previewReady, this,
@@ -193,11 +212,97 @@ MainWindow::MainWindow() {
         ToolDialog dlg(this);
         dlg.exec();
     });
+    tools->addAction("&Backlash compensation...", this, [this] {
+        QSettings s;
+        QDialog dlg(this);
+        dlg.setWindowTitle("Backlash compensation");
+        auto* form = new QFormLayout(&dlg);
+        auto* en = new QCheckBox("Enable (applied to every loaded program)");
+        en->setChecked(s.value("backlash/enabled", false).toBool());
+        auto mk = [&](const char* key, double dflt, double max) {
+            auto* sp = new QDoubleSpinBox;
+            sp->setRange(0, max);
+            sp->setDecimals(3);
+            sp->setSingleStep(0.005);
+            sp->setValue(s.value(key, dflt).toDouble());
+            return sp;
+        };
+        auto* bx = mk("backlash/x", 0.0, 2.0);
+        auto* by = mk("backlash/y", 0.0, 2.0);
+        auto* bz = mk("backlash/z", 0.0, 2.0);
+        auto* bf = mk("backlash/feed", 300.0, 2000.0);
+        bf->setDecimals(0);
+        form->addRow(en);
+        form->addRow("X backlash mm", bx);
+        form->addRow("Y backlash mm", by);
+        form->addRow("Z backlash mm", bz);
+        form->addRow("Takeup feed mm/min", bf);
+        auto* note = new QLabel(
+            "Measure with a dial indicator per axis: jog +1, zero, jog -1;\n"
+            "what the needle doesn't come back is the backlash. Takes\n"
+            "effect the next time a program is loaded into the sender.");
+        note->setWordWrap(true);
+        form->addRow(note);
+        auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                        QDialogButtonBox::Cancel);
+        form->addRow(bb);
+        connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+        if (dlg.exec() == QDialog::Accepted) {
+            s.setValue("backlash/enabled", en->isChecked());
+            s.setValue("backlash/x", bx->value());
+            s.setValue("backlash/y", by->value());
+            s.setValue("backlash/z", bz->value());
+            s.setValue("backlash/feed", bf->value());
+            statusBar()->showMessage(
+                en->isChecked()
+                    ? "Backlash comp ON - reload the program to apply"
+                    : "Backlash comp off",
+                5000);
+        }
+    });
 
     auto* probe = menuBar()->addMenu("&Probe");
     probe->addAction("&Z touch-off...", this, &MainWindow::zTouchOff);
     probe->addAction("&Height map / autolevel...", this,
                      &MainWindow::heightMapWizard);
+    probe->addAction("Probe &settings...", this, [this] {
+        QSettings s;
+        QDialog dlg(this);
+        dlg.setWindowTitle("Probe settings");
+        auto* form = new QFormLayout(&dlg);
+        auto mk = [&](const char* key, double dflt, double max, int dec) {
+            auto* sp = new QDoubleSpinBox;
+            sp->setRange(0, max);
+            sp->setDecimals(dec);
+            sp->setValue(s.value(key, dflt).toDouble());
+            return sp;
+        };
+        auto* pz = mk("probe/puckZ", 0.0, 50, 3);
+        pz->setToolTip("Height of the touch puck: after the probe "
+                       "triggers, Z work zero is set to this value so "
+                       "Z0 lands on the surface UNDER the puck");
+        auto* pxy = mk("probe/puckXY", 0.0, 50, 3);
+        pxy->setToolTip("Puck wall thickness for X/Y edge finds "
+                        "(used by stock/edge probing)");
+        auto* pf = mk("probe/feed", 40.0, 500, 0);
+        auto* pt = mk("probe/travel", 25.0, 100, 1);
+        form->addRow("Puck thickness Z mm", pz);
+        form->addRow("Puck offset X/Y mm", pxy);
+        form->addRow("Probe feed mm/min", pf);
+        form->addRow("Max probe travel mm", pt);
+        auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                        QDialogButtonBox::Cancel);
+        form->addRow(bb);
+        connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+        if (dlg.exec() == QDialog::Accepted) {
+            s.setValue("probe/puckZ", pz->value());
+            s.setValue("probe/puckXY", pxy->value());
+            s.setValue("probe/feed", pf->value());
+            s.setValue("probe/travel", pt->value());
+        }
+    });
 
     // machine client wiring
     connect(mc_, &MachineClient::connected, this, [this](const QString& w) {
@@ -749,8 +854,32 @@ void MainWindow::showProgram(const scnc::Program& p) {
 void MainWindow::loadProgramText(const QString& text, const QString& title) {
     programText_ = text;
     program_ = parseGcode(text.toStdString());
+    QString shownTitle = title;
+    // transparent backlash compensation (PlanetCNC-style): every program
+    // that reaches the sender is compensated when enabled in Tools
+    QSettings s;
+    if (s.value("backlash/enabled", false).toBool()) {
+        BacklashOptions o;
+        o.x = s.value("backlash/x", 0.0).toDouble();
+        o.y = s.value("backlash/y", 0.0).toDouble();
+        o.z = s.value("backlash/z", 0.0).toDouble();
+        o.takeupFeed = s.value("backlash/feed", 300.0).toDouble();
+        if (o.enabled()) {
+            auto r = applyBacklash(program_, o);
+            if (r.ok) {
+                programText_ = QString::fromStdString(r.gcode);
+                program_ = parseGcode(r.gcode);
+                shownTitle += QString(" [backlash %1]").arg(r.takeups);
+            } else {
+                statusBar()->showMessage(
+                    "Backlash comp skipped: " +
+                        QString::fromStdString(r.error),
+                    6000);
+            }
+        }
+    }
     showProgram(program_);
-    setWindowTitle("SharkCNC - " + title);
+    setWindowTitle("SharkCNC - " + shownTitle);
     statusBar()->showMessage(
         QString("%1 lines, %2 motion segments")
             .arg(programText_.count('\n'))
@@ -846,10 +975,12 @@ void MainWindow::runJob() {
 void MainWindow::zTouchOff() {
     if (!mc_->isConnected()) return;
     bool ok = false;
+    QSettings s;
     double thickness = QInputDialog::getDouble(
-        this, "Z touch-off", "Probe plate thickness (mm):", 0.0, 0, 50, 3,
-        &ok);
+        this, "Z touch-off", "Probe puck thickness (mm):",
+        s.value("probe/puckZ", 0.0).toDouble(), 0, 50, 3, &ok);
     if (!ok) return;
+    s.setValue("probe/puckZ", thickness);   // remembered for next time
     auto* conn = new QMetaObject::Connection;
     *conn = connect(mc_, &MachineClient::probeFinished, this,
                     [this, thickness, conn](bool good, double, double, double) {
@@ -864,7 +995,9 @@ void MainWindow::zTouchOff() {
                         mc_->sendCommand("G0 Z5");
                         statusBar()->showMessage("Z zeroed at surface", 5000);
                     });
-    mc_->probe("G38.2 Z-25 F40");
+    mc_->probe(QString("G38.2 Z-%1 F%2")
+                   .arg(QSettings().value("probe/travel", 25.0).toDouble())
+                   .arg(QSettings().value("probe/feed", 40.0).toDouble()));
 }
 
 void MainWindow::heightMapWizard() {

@@ -8,6 +8,7 @@ qt_add_executable(sharkcnc
   main_window.cpp
   heightmap_dialog.cpp
   probe_dialog.cpp
+  stock_panel.cpp
   cam_panel.cpp
   tool_library.cpp
   tool_dialog.cpp

@@ -126,3 +126,66 @@ TEST_CASE("resume past the end is empty") {
     CHECK(buildResumeJob(job, 2, 1.0).empty());
     CHECK(buildResumeJob(job, 99, 1.0).empty());
 }
+
+// ---------------------------------------------------------------- backlash
+#include "gcode/backlash.h"
+
+TEST_CASE("backlash: reversal inserts a takeup and shifts coordinates") {
+    auto p = parseGcode("G21 G90\nG1 X10 Y0 Z0 F100\nG1 X0 Y0 Z0 F100\n");
+    BacklashOptions o;
+    o.x = 0.1;
+    auto r = applyBacklash(p, o);
+    REQUIRE(r.ok);
+    CHECK(r.takeups == 1);
+    // the return move must be commanded 0.1 short (shifted -0.1)
+    auto p2 = parseGcode(r.gcode);
+    REQUIRE(!p2.segments.empty());
+    double minX = 1e9;
+    for (auto& s : p2.segments) minX = std::min(minX, s.to.x);
+    CHECK(minX == Catch::Approx(-0.1).margin(1e-6));
+    // the takeup itself is zero real motion: same program position,
+    // new offset, marked in the text
+    CHECK(r.gcode.find("backlash takeup") != std::string::npos);
+}
+
+TEST_CASE("backlash: square loop compensates each reversing axis once") {
+    auto p = parseGcode(
+        "G21 G90\nG1 X10 Y0 F100\nG1 X10 Y10 F100\n"
+        "G1 X0 Y10 F100\nG1 X0 Y0 F100\n");
+    BacklashOptions o;
+    o.x = 0.1; o.y = 0.05;
+    auto r = applyBacklash(p, o);
+    REQUIRE(r.ok);
+    CHECK(r.takeups == 2);   // X reverses once, Y reverses once
+}
+
+TEST_CASE("backlash: full circle gets quadrant takeups") {
+    // CCW full circle from (10,0) about (0,0) after an X+ approach:
+    // circle entry is an X reversal, then X again at 180 deg and Y at
+    // 90/270 deg = 4 takeups
+    auto p = parseGcode("G21 G90\nG1 X10 Y0 F100\nG3 X10 Y0 I-10 J0 F100\n");
+    BacklashOptions o;
+    o.x = 0.1; o.y = 0.1;
+    auto r = applyBacklash(p, o);
+    REQUIRE(r.ok);
+    CHECK(r.takeups == 4);
+}
+
+TEST_CASE("backlash: probe line passes through with prior takeup") {
+    auto p = parseGcode(
+        "G21 G90\nG1 Z2 F100\nG38.2 Z-5 F40\n");
+    BacklashOptions o;
+    o.z = 0.076;
+    auto r = applyBacklash(p, o);
+    REQUIRE(r.ok);
+    CHECK(r.takeups == 1);                       // Z+ then Z- = reversal
+    CHECK(r.gcode.find("G38.2 Z-5 F40") != std::string::npos);  // verbatim
+}
+
+TEST_CASE("backlash: rejects zero config and relative programs") {
+    auto p = parseGcode("G21 G90\nG1 X1 F100\n");
+    CHECK_FALSE(applyBacklash(p, BacklashOptions{}).ok);
+    auto rel = parseGcode("G91\nG1 X1 F100\n");
+    BacklashOptions o; o.x = 0.1;
+    CHECK_FALSE(applyBacklash(rel, o).ok);
+}

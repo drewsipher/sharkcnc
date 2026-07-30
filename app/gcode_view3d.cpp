@@ -90,6 +90,8 @@ GcodeView3D::~GcodeView3D() {
         meshVbo_.destroy();
         hmapVbo_.destroy();
         hmapWireVbo_.destroy();
+        stockEstVbo_.destroy();
+        stockMeasVbo_.destroy();
         doneCurrent();
     }
 }
@@ -163,12 +165,16 @@ void GcodeView3D::initializeGL() {
     meshVbo_.create();
     hmapVbo_.create();
     hmapWireVbo_.create();
+    stockEstVbo_.create();
+    stockMeasVbo_.create();
     cutVao_.create();
     rapidVao_.create();
     gridVao_.create();
     meshVao_.create();
     hmapVao_.create();
     hmapWireVao_.create();
+    stockEstVao_.create();
+    stockMeasVao_.create();
 }
 
 void GcodeView3D::uploadLines(QOpenGLBuffer& vbo,
@@ -297,6 +303,12 @@ void GcodeView3D::paintGL() {
         uploadLines(hmapWireVbo_, hmapWireVao_, hmapWire_, hmapWireCount_);
         hmapDirty_ = false;
     }
+    if (stockDirty_) {
+        uploadLines(stockEstVbo_, stockEstVao_, stockEst_, stockEstCount_);
+        uploadLines(stockMeasVbo_, stockMeasVao_, stockMeas_,
+                    stockMeasCount_);
+        stockDirty_ = false;
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     QMatrix4x4 mvp = projection() * modelView();
 
@@ -339,6 +351,23 @@ void GcodeView3D::paintGL() {
     glDrawArrays(GL_LINES, 0, cutCount_);
     cutVao_.release();
     lineProg_.release();
+
+    // stock wireframes: estimate amber, measured top green
+    if (stockEstCount_ > 0 || stockMeasCount_ > 0) {
+        lineProg_.bind();
+        lineProg_.setUniformValue("mvp", mvp);
+        glLineWidth(2.0f);
+        lineProg_.setUniformValue("color", QVector4D(0.92f, 0.72f, 0.30f, 1));
+        stockEstVao_.bind();
+        glDrawArrays(GL_LINES, 0, stockEstCount_);
+        stockEstVao_.release();
+        lineProg_.setUniformValue("color", QVector4D(0.35f, 0.85f, 0.55f, 1));
+        stockMeasVao_.bind();
+        glDrawArrays(GL_LINES, 0, stockMeasCount_);
+        stockMeasVao_.release();
+        glLineWidth(1.0f);
+        lineProg_.release();
+    }
 
     // probed height-map surface + its wireframe
     if (hmapCount_ > 0) {
@@ -529,6 +558,35 @@ void GcodeView3D::setHeightMap(const scnc::HeightMap& m, double ex) {
         dist_ = float(boundR_ * 2.2);
     }
     hmapDirty_ = true;
+    update();
+}
+
+void GcodeView3D::setStockOverlay(const std::vector<float>& est,
+                                  const std::vector<float>& meas) {
+    stockEst_ = est;
+    stockMeas_ = meas;
+    // frame the estimate box
+    if (!est.empty()) {
+        float mn[3] = {1e9f, 1e9f, 1e9f}, mx[3] = {-1e9f, -1e9f, -1e9f};
+        for (size_t i = 0; i + 2 < est.size(); i += 3)
+            for (int a = 0; a < 3; ++a) {
+                mn[a] = std::min(mn[a], est[i + a]);
+                mx[a] = std::max(mx[a], est[i + a]);
+            }
+        target_ = {(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2,
+                   (mn[2] + mx[2]) / 2};
+        boundR_ = std::max(5.0, 0.6 * std::hypot(double(mx[0] - mn[0]),
+                                                 double(mx[1] - mn[1])));
+        dist_ = float(boundR_ * 2.2);
+    }
+    stockDirty_ = true;
+    update();
+}
+
+void GcodeView3D::clearStockOverlay() {
+    stockEst_.clear();
+    stockMeas_.clear();
+    stockDirty_ = true;
     update();
 }
 

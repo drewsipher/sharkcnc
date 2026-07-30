@@ -19,6 +19,7 @@ class QComboBox;
 class CamPanel : public QWidget {
     Q_OBJECT
 public:
+    void addExtraTab(QWidget* w, const QString& title);
     explicit CamPanel(QWidget* parent = nullptr);
 
     void loadGerber(const QString& path);

@@ -600,3 +600,7 @@ void CamPanel::regenDrill() {
                       drillGcode_,
                       drillName_ + " [drill]");
 }
+
+void CamPanel::addExtraTab(QWidget* w, const QString& title) {
+    tabs_->addTab(w, title);
+}
