@@ -29,6 +29,7 @@ public:
     void setView3DPreset(const QString& p);
 
 protected:
+    bool eventFilter(QObject* obj, QEvent* ev) override;
     void keyPressEvent(QKeyEvent* e) override;
 
 private slots:
@@ -57,6 +58,8 @@ private:
     void setStep(double mm);
     double jogFeed() const;
     void jogAxis(const QString& axes);   // keyboard/held jog helper
+    bool jogKeyPress(QKeyEvent* e);
+    bool jogKeyRelease(QKeyEvent* e);
 
     MachineClient* mc_;
     GcodeView* view_;

@@ -1,5 +1,6 @@
 #include "main_window.h"
 
+#include <QAbstractSpinBox>
 #include <QApplication>
 #include <QComboBox>
 #include <QDockWidget>
@@ -26,6 +27,7 @@
 #include <QVBoxLayout>
 
 #include <QStackedWidget>
+#include <QTextEdit>
 #include <QDragEnterEvent>
 #include <QMimeData>
 #include <QOffscreenSurface>
@@ -324,6 +326,9 @@ MainWindow::MainWindow() {
         s.value("conn/device", "/dev/ttyACM0").toString());
     baudSpin_->setValue(s.value("conn/baud", 115200).toInt());
     connType_->setCurrentIndex(s.value("conn/type", 0).toInt());
+
+    // jog keys work regardless of which child widget has focus
+    qApp->installEventFilter(this);
 }
 
 void MainWindow::openPath(const QString& path) {
@@ -584,7 +589,7 @@ void MainWindow::jogAxis(const QString& axesTemplate) {
     mc_->jog(axesTemplate.arg(curStep_), jogFeed());
 }
 
-void MainWindow::keyReleaseEvent(QKeyEvent* e) {
+bool MainWindow::jogKeyRelease(QKeyEvent* e) {
     // stop continuous (held-key) jogging cleanly on release
     if (!e->isAutoRepeat() &&
         (e->key() == Qt::Key_Left || e->key() == Qt::Key_Right ||
@@ -595,9 +600,13 @@ void MainWindow::keyReleaseEvent(QKeyEvent* e) {
         if (jogHeld_) mc_->jogCancel();
         jogHeld_ = false;
         jogging_ = false;
-        e->accept();
-        return;
+        return true;
     }
+    return false;
+}
+
+void MainWindow::keyReleaseEvent(QKeyEvent* e) {
+    if (jogKeyRelease(e)) { e->accept(); return; }
     QMainWindow::keyReleaseEvent(e);
 }
 
@@ -622,31 +631,53 @@ void MainWindow::dropEvent(QDropEvent* e) {
     e->acceptProposedAction();
 }
 
+bool MainWindow::jogKeyPress(QKeyEvent* e) {
+    if (!mc_->isConnected()) return false;
+    QString ax;
+    switch (e->key()) {
+        case Qt::Key_Left: ax = "X-%1"; break;
+        case Qt::Key_Right: ax = "X%1"; break;
+        case Qt::Key_Up: ax = "Y%1"; break;
+        case Qt::Key_Down: ax = "Y-%1"; break;
+        case Qt::Key_PageUp: ax = "Z%1"; break;
+        case Qt::Key_PageDown: ax = "Z-%1"; break;
+        default: return false;
+    }
+    if (e->isAutoRepeat()) jogHeld_ = true;  // continuous hold
+    jogAxis(ax);
+    return true;
+}
+
 void MainWindow::keyPressEvent(QKeyEvent* e) {
-    if (mc_->isConnected() && !cmdEdit_->hasFocus()) {
-        QString ax;
-        switch (e->key()) {
-            case Qt::Key_Left: ax = "X-%1"; break;
-            case Qt::Key_Right: ax = "X%1"; break;
-            case Qt::Key_Up: ax = "Y%1"; break;
-            case Qt::Key_Down: ax = "Y-%1"; break;
-            case Qt::Key_PageUp: ax = "Z%1"; break;
-            case Qt::Key_PageDown: ax = "Z-%1"; break;
-            default: break;
-        }
-        if (!ax.isEmpty()) {
-            if (e->isAutoRepeat()) jogHeld_ = true;  // continuous hold
-            jogAxis(ax);
-            e->accept();
-            return;
-        }
-        if (e->key() == Qt::Key_Escape) {  // panic stop
-            mc_->feedHold();
-            e->accept();
-            return;
+    if (jogKeyPress(e)) { e->accept(); return; }
+    QMainWindow::keyPressEvent(e);
+}
+
+// App-wide filter: jog keys work no matter which widget has focus, as
+// long as you aren't typing in a text/number field. Without this the
+// arrows only jogged when focus happened to sit on the main window -
+// one click into any spinbox and they silently stopped working.
+bool MainWindow::eventFilter(QObject* obj, QEvent* ev) {
+    if ((ev->type() == QEvent::KeyPress || ev->type() == QEvent::KeyRelease) &&
+        QApplication::activeWindow() == this) {
+        auto* ke = static_cast<QKeyEvent*>(ev);
+        QWidget* f = QApplication::focusWidget();
+        bool editing = f && (qobject_cast<QLineEdit*>(f) ||
+                             qobject_cast<QAbstractSpinBox*>(f) ||
+                             qobject_cast<QComboBox*>(f) ||
+                             qobject_cast<QPlainTextEdit*>(f) ||
+                             qobject_cast<QTextEdit*>(f));
+        if (ev->type() == QEvent::KeyPress) {
+            if (ke->key() == Qt::Key_Escape && mc_->isConnected()) {
+                mc_->feedHold();   // panic stop works everywhere, always
+                return true;
+            }
+            if (!editing && jogKeyPress(ke)) return true;
+        } else if (!editing && jogKeyRelease(ke)) {
+            return true;
         }
     }
-    QMainWindow::keyPressEvent(e);
+    return QMainWindow::eventFilter(obj, ev);
 }
 
 void MainWindow::doConnect() {
