@@ -36,7 +36,7 @@ axes:
       limit_neg_pin: gpio.42:low
       standard_stepper:
         step_pin: gpio.18
-        direction_pin: gpio.17
+        direction_pin: gpio.17:low
   y:
     steps_per_mm: 1259.84
     max_rate_mm_per_min: 700
