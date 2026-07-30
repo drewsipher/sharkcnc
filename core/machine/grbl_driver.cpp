@@ -375,7 +375,13 @@ void GrblDriver::handleLine(const std::string& line) {
             body = body.substr(0, lastColon);
         }
         if (parse3(body, a, b, c)) {
-            pr.x = a; pr.y = b; pr.z = c;
+            // grbl/FluidNC report PRB in MACHINE coordinates; everything
+            // downstream (height maps, stock probing, map-aware touch-off)
+            // works in WORK coordinates - convert with the last-known WCO.
+            std::lock_guard lk(m_);
+            pr.x = a - status_.wcoX;
+            pr.y = b - status_.wcoY;
+            pr.z = c - status_.wcoZ;
         }
         static_cast<void>(colon);
         if (cb_.onProbe) cb_.onProbe(pr);

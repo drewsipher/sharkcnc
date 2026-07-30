@@ -999,23 +999,47 @@ void MainWindow::zTouchOff() {
     lay->addWidget(bb);
     connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    QCheckBox* useMap = nullptr;
+    if (lastMap_.valid()) {
+        useMap = new QCheckBox(
+            "Height-map aware: keep the probed map valid by adding the\n"
+            "map's surface height at the touch-off point to the new zero");
+        useMap->setChecked(true);
+        useMap->setToolTip(
+            "After a tool change, a plain touch-off re-declares the local "
+            "surface as Z0, but the height map says the surface here is "
+            "NOT zero - warped G-code would then cut off by that amount. "
+            "This option preserves the map's coordinate frame.");
+        lay->insertWidget(1, useMap);
+    }
     if (dlg.exec() != QDialog::Accepted) return;
     s.setValue("probe/usePuck", usePuck->isChecked());
     const double thickness = usePuck->isChecked() ? puckZ : 0.0;
+    const bool mapAware = useMap && useMap->isChecked();
     auto* conn = new QMetaObject::Connection;
-    *conn = connect(mc_, &MachineClient::probeFinished, this,
-                    [this, thickness, conn](bool good, double, double, double) {
-                        QObject::disconnect(*conn);
-                        delete conn;
-                        if (!good) {
-                            statusBar()->showMessage("Probe failed", 5000);
-                            return;
-                        }
-                        mc_->sendCommand(
-                            QString("G10 L20 P0 Z%1").arg(thickness));
-                        mc_->sendCommand("G0 Z5");
-                        statusBar()->showMessage("Z zeroed at surface", 5000);
-                    });
+    *conn = connect(
+        mc_, &MachineClient::probeFinished, this,
+        [this, thickness, mapAware, conn](bool good, double px, double py,
+                                          double) {
+            QObject::disconnect(*conn);
+            delete conn;
+            if (!good) {
+                statusBar()->showMessage("Probe failed", 5000);
+                return;
+            }
+            double zRef = thickness;
+            QString note = "Z zeroed at surface";
+            if (mapAware && lastMap_.valid()) {
+                const double mz = lastMap_.interpolate(px, py);
+                zRef += mz;
+                note = QString("Z zeroed, map-aware (%1%2 mm here)")
+                           .arg(mz >= 0 ? "+" : "")
+                           .arg(mz, 0, 'f', 3);
+            }
+            mc_->sendCommand(QString("G10 L20 P0 Z%1").arg(zRef));
+            mc_->sendCommand("G0 Z5");
+            statusBar()->showMessage(note, 6000);
+        });
     mc_->probe(QString("G38.2 Z-%1 F%2")
                    .arg(QSettings().value("probe/travel", 25.0).toDouble())
                    .arg(QSettings().value("probe/feed", 40.0).toDouble()));
@@ -1038,6 +1062,7 @@ void MainWindow::heightMapWizard() {
     auto* dlg = new ProbeDialog(mc_, x0, y0, x1, y1, this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     connect(dlg, &QDialog::accepted, this, [this, dlg] {
+        if (dlg->hasMap()) lastMap_ = dlg->map();
         if (!dlg->hasMap() || programText_.isEmpty()) return;
         auto r = warpGcode(program_, dlg->map(), {});
         if (!r.ok) {
