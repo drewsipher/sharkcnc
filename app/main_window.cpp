@@ -192,6 +192,15 @@ MainWindow::MainWindow() {
     auto* hmapAct = view->addAction("&Height map...", this, [this] {
         auto* dlg = new HeightmapDialog(this);
         dlg->setAttribute(Qt::WA_DeleteOnClose);
+        connect(dlg, &HeightmapDialog::mapLoaded, this,
+                [this](const scnc::HeightMap& hm) {
+                    lastMap_ = hm;
+                    statusBar()->showMessage(
+                        "Map loaded - available for map-aware touch-off",
+                        5000);
+                });
+        connect(dlg, &HeightmapDialog::applyRequested, this,
+                &MainWindow::applyHeightMap);
         dlg->show();
     });
     // 3D controls are inert without an OpenGL context
@@ -1062,20 +1071,33 @@ void MainWindow::heightMapWizard() {
     auto* dlg = new ProbeDialog(mc_, x0, y0, x1, y1, this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     connect(dlg, &QDialog::accepted, this, [this, dlg] {
-        if (dlg->hasMap()) lastMap_ = dlg->map();
-        if (!dlg->hasMap() || programText_.isEmpty()) return;
-        auto r = warpGcode(program_, dlg->map(), {});
-        if (!r.ok) {
-            QMessageBox::warning(this, "Warp failed",
-                                 QString::fromStdString(r.error));
-            return;
+        if (dlg->hasMap()) {
+            lastMap_ = dlg->map();
+            applyHeightMap(dlg->map());
         }
-        loadProgramText(QString::fromStdString(r.gcode),
-                        windowTitle().section(" - ", 1) + " [warped]");
-        statusBar()->showMessage(
-            "Height map applied - review the preview, then Run", 8000);
     });
     dlg->show();
+}
+
+// Warp the loaded program onto a height map (no-op with no program).
+void MainWindow::applyHeightMap(const scnc::HeightMap& hm) {
+    if (programText_.isEmpty()) {
+        statusBar()->showMessage(
+            "Map remembered for map-aware touch-off (no G-code loaded to "
+            "warp)",
+            6000);
+        return;
+    }
+    auto r = warpGcode(program_, hm, {});
+    if (!r.ok) {
+        QMessageBox::warning(this, "Warp failed",
+                             QString::fromStdString(r.error));
+        return;
+    }
+    loadProgramText(QString::fromStdString(r.gcode),
+                    windowTitle().section(" - ", 1) + " [warped]");
+    statusBar()->showMessage(
+        "Height map applied - review the preview, then Run", 8000);
 }
 
 void MainWindow::appendConsole(const QString& line, bool sent) {

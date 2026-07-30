@@ -101,6 +101,19 @@ ProbeDialog::ProbeDialog(MachineClient* mc, double minX, double minY,
         auto* dlg = new HeightmapDialog(window());
         dlg->setAttribute(Qt::WA_DeleteOnClose);
         dlg->setMap(map_);
+        // a map loaded inside the viewer becomes this wizard's map, so
+        // Save / Apply / accept all work with it
+        connect(dlg, &HeightmapDialog::mapLoaded, this,
+                [this](const scnc::HeightMap& hm) {
+                    map_ = hm;
+                    mapDone_ = true;
+                    saveBtn_->setEnabled(true);
+                    viewBtn_->setEnabled(true);
+                    applyBtn_->setEnabled(true);
+                    info_->setText("Loaded a saved map.");
+                });
+        connect(dlg, &HeightmapDialog::applyRequested, this,
+                [this](const scnc::HeightMap&) { accept(); });
         dlg->show();
     });
     connect(applyBtn_, &QPushButton::clicked, this, &QDialog::accept);

@@ -17,6 +17,12 @@ public:
     void setMap(const scnc::HeightMap& m);
     bool loadFile(const QString& path);
 
+signals:
+    // a map was loaded from disk by the user (not preloaded via setMap)
+    void mapLoaded(const scnc::HeightMap& m);
+    // "Apply to loaded G-code" pressed
+    void applyRequested(const scnc::HeightMap& m);
+
 private:
     void refresh();
 
@@ -25,4 +31,5 @@ private:
     QSlider* exSlider_ = nullptr;
     QLabel *exLabel_ = nullptr, *stats_ = nullptr;
     QLabel *minChip_ = nullptr, *midChip_ = nullptr, *maxChip_ = nullptr;
+    class QPushButton* applyBtn_ = nullptr;
 };

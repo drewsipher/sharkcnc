@@ -27,6 +27,7 @@ public:
     void autoConnectTcp(const QString& host, int port);
     void openCamGerber(const QString& path);
     void forceView3D();
+    void applyHeightMap(const scnc::HeightMap& hm);
     scnc::HeightMap lastMap_;   // most recent probed/loaded height map
     void openProbeWizard();
     void loadStlPath(const QString& p);

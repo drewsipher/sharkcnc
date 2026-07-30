@@ -32,7 +32,10 @@ HeightmapDialog::HeightmapDialog(QWidget* parent) : QDialog(parent) {
 
     auto* top = new QHBoxLayout;
     auto* loadBtn = new QPushButton("Load map...");
+    applyBtn_ = new QPushButton("Apply to loaded G-code");
+    applyBtn_->setEnabled(false);
     top->addWidget(loadBtn);
+    top->addWidget(applyBtn_);
     auto* topBtn = new QPushButton("Top");
     auto* isoBtn = new QPushButton("Iso");
     top->addWidget(topBtn);
@@ -76,6 +79,8 @@ HeightmapDialog::HeightmapDialog(QWidget* parent) : QDialog(parent) {
             QMessageBox::warning(this, "Height map",
                                  "Could not parse that height map file.");
     });
+    connect(applyBtn_, &QPushButton::clicked, this,
+            [this] { if (map_.valid()) emit applyRequested(map_); });
     connect(topBtn, &QPushButton::clicked, view_, &GcodeView3D::viewTop);
     connect(isoBtn, &QPushButton::clicked, view_, &GcodeView3D::viewIso);
     connect(exSlider_, &QSlider::valueChanged, this, [this](int v) {
@@ -98,11 +103,13 @@ bool HeightmapDialog::loadFile(const QString& path) {
     if (!HeightMap::fromJson(ss.str(), m) || !m.valid()) return false;
     setWindowTitle("Height map viewer - " + QFileInfo(path).fileName());
     setMap(m);
+    emit mapLoaded(m);
     return true;
 }
 
 void HeightmapDialog::refresh() {
     if (!map_.valid()) return;
+    if (applyBtn_) applyBtn_->setEnabled(true);
     view_->setHeightMap(map_, exSlider_->value());
     double zmin = 1e30, zmax = -1e30;
     for (int j = 0; j < map_.ny(); ++j)
