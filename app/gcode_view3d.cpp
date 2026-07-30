@@ -504,6 +504,10 @@ void GcodeView3D::setHeightMap(const scnc::HeightMap& m, double ex) {
             }
         // diverging color around Z=0: blue below, neutral gray at 0, red above
         const double range = std::max({std::abs(zmin), std::abs(zmax), 1e-9});
+        // geometry is centered about the map's own mid-height so the
+        // surface stays centered on screen at any exaggeration (colors
+        // still encode TRUE Z relative to zero)
+        const double zc = (zmin + zmax) / 2;
         auto color = [&](double z, float* rgb) {
             double t = std::clamp(z / range, -1.0, 1.0);
             const float mid[3] = {0.58f, 0.58f, 0.56f};
@@ -517,7 +521,7 @@ void GcodeView3D::setHeightMap(const scnc::HeightMap& m, double ex) {
         auto P = [&](int i, int j) {
             return QVector3D(float(m.x0() + i * m.dx()),
                              float(m.y0() + j * m.dy()),
-                             float(m.at(i, j) * ex));
+                             float((m.at(i, j) - zc) * ex));
         };
         auto N = [&](int i, int j) {
             // central differences on the exaggerated surface
