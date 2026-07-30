@@ -50,6 +50,23 @@ PathsD orderPaths(PathsD paths) {
     return out;
 }
 
+// CCW rotation about the origin: 90 (x,y)->(-y,x), 180, 270
+void rotatePt(double& x, double& y, int deg) {
+    double ox = x, oy = y;
+    switch (((deg % 360) + 360) % 360) {
+        case 90:  x = -oy; y = ox;  break;
+        case 180: x = -ox; y = -oy; break;
+        case 270: x = oy;  y = -ox; break;
+        default: break;
+    }
+}
+
+void rotatePaths(PathsD& ps, int deg) {
+    if (((deg % 360) + 360) % 360 == 0) return;
+    for (auto& p : ps)
+        for (auto& pt : p) rotatePt(pt.x, pt.y, deg);
+}
+
 void mirror(PathsD& ps) {
     for (auto& p : ps) {
         for (auto& pt : p) pt.x = -pt.x;
@@ -72,6 +89,7 @@ IsolationResult isolationRoute(const GerberLayer& layer,
     }
 
     PathsD copper = layer.copper;
+    rotatePaths(copper, opt.rotateDeg);
     if (opt.mirrorX) mirror(copper);
 
     // Rebuild the copper as a nesting tree so we can tell a *drill hole* (an
@@ -177,14 +195,18 @@ DrillResult drillGcode(const DrillFile& drills, const DrillOptions& opt) {
             size_t bi = 0;
             for (size_t i = 0; i < hits.size(); ++i) {
                 if (used[i]) continue;
-                double x = opt.mirrorX ? -hits[i].x : hits[i].x;
-                double d = std::hypot(x - cx, hits[i].y - cy);
+                double x = hits[i].x, y = hits[i].y;
+                rotatePt(x, y, opt.rotateDeg);
+                if (opt.mirrorX) x = -x;
+                double d = std::hypot(x - cx, y - cy);
                 if (d < best) { best = d; bi = i; }
             }
             used[bi] = true;
-            double x = opt.mirrorX ? -hits[bi].x : hits[bi].x;
-            cx = x; cy = hits[bi].y;
-            g.rapidXY(x, hits[bi].y);
+            double x = hits[bi].x, y = hits[bi].y;
+            rotatePt(x, y, opt.rotateDeg);
+            if (opt.mirrorX) x = -x;
+            cx = x; cy = y;
+            g.rapidXY(x, y);
             g.feedZ(opt.cutZ, opt.plunge);
             g.rapidZ(opt.travelZ);
             ++res.holes;

@@ -62,6 +62,7 @@ private:
         *isoPlunge_, *isoFillHoles_;
     QSpinBox *isoPasses_, *isoRpm_;
     QCheckBox* isoMirror_;
+    QComboBox *isoRotate_ = nullptr, *drillRotate_ = nullptr;
     QLabel *isoSummary_, *isoToolNote_;
     QPushButton *isoPreviewBtn_, *isoSendBtn_;
     QString isoGcode_;

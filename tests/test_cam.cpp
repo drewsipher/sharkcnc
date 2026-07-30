@@ -485,3 +485,24 @@ TEST_CASE("revD board: thermal reliefs and copper text survive isolation") {
     CHECK(iso.filledVoids.empty());
     CHECK(iso.trueCopper.size() == iso.cleanedCopper.size());
 }
+
+TEST_CASE("isolation rotate 90: bounds swap and follow the transform") {
+    using namespace Clipper2Lib;
+    GerberLayer layer;
+    // 20x10 copper bar with a corner marker pad at (18,8)
+    layer.copper.push_back(
+        PathD{{0.0, 0.0}, {20.0, 0.0}, {20.0, 10.0}, {0.0, 10.0}});
+    layer.minX = 0; layer.maxX = 20; layer.minY = 0; layer.maxY = 10;
+
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    o.rotateDeg = 90;                     // CCW: (x,y) -> (-y,x)
+    auto iso = isolationRoute(layer, o);
+    REQUIRE(iso.ok);
+    auto b = GetBounds(iso.cleanedCopper);
+    // 20 wide x 10 tall becomes 10 wide x 20 tall in the -X half-plane
+    CHECK(std::abs(b.Width() - 10.0) < 0.01);
+    CHECK(std::abs(b.Height() - 20.0) < 0.01);
+    CHECK(b.left < -9.9);
+    CHECK(b.left > -10.1);
+}

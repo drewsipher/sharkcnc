@@ -81,6 +81,10 @@ QWidget* CamPanel::buildIsoTab() {
         "aren't milled; larger voids like pour clearances are kept. 0 = "
         "isolate every hole.");
     isoMirror_ = new QCheckBox("Mirror X (bottom copper)");
+    isoRotate_ = new QComboBox;
+    isoRotate_->addItems({"0°", "90°", "180°", "270°"});
+    isoRotate_->setToolTip("Rotate the board CCW about the gerber origin "
+                           "(applies to drill too - the combos are linked)");
     form->addRow("Tool", isoToolPick_);
     form->addRow("Width Ø mm", isoTool_);
     form->addRow("", isoToolNote_);
@@ -92,6 +96,7 @@ QWidget* CamPanel::buildIsoTab() {
     form->addRow("Plunge mm/min", isoPlunge_);
     form->addRow("Spindle RPM", isoRpm_);
     form->addRow("Fill holes < mm", isoFillHoles_);
+    form->addRow("Rotate", isoRotate_);
     form->addRow(isoMirror_);
     lay->addLayout(form);
 
@@ -114,6 +119,11 @@ QWidget* CamPanel::buildIsoTab() {
     connect(isoPasses_, &QSpinBox::valueChanged, this, &CamPanel::regenIso);
     connect(isoRpm_, &QSpinBox::valueChanged, this, &CamPanel::regenIso);
     connect(isoMirror_, &QCheckBox::toggled, this, &CamPanel::regenIso);
+    connect(isoRotate_, &QComboBox::currentIndexChanged, this, [this](int i) {
+        if (drillRotate_ && drillRotate_->currentIndex() != i)
+            drillRotate_->setCurrentIndex(i);   // keep the two layers aligned
+        regenIso();
+    });
     // picking a tool (or changing depth) recomputes the effective width
     connect(isoToolPick_, &QComboBox::currentIndexChanged, this,
             [this] { applyPickedTool(); });
@@ -203,11 +213,16 @@ QWidget* CamPanel::buildDrillTab() {
     drillSingle_ = new QCheckBox("Single tool (no toolchange pauses)");
     drillSingle_->setChecked(true);
     drillMirror_ = new QCheckBox("Mirror X (bottom side)");
+    drillRotate_ = new QComboBox;
+    drillRotate_->addItems({"0°", "90°", "180°", "270°"});
+    drillRotate_->setToolTip("Rotate CCW about the origin (linked with the "
+                             "copper tab's Rotate)");
     form->addRow(drillSingle_);
     form->addRow("Cut Z mm", drillDepth_);
     form->addRow("Travel Z mm", drillTravel_);
     form->addRow("Plunge mm/min", drillPlunge_);
     form->addRow("Spindle RPM", drillRpm_);
+    form->addRow("Rotate", drillRotate_);
     form->addRow(drillMirror_);
     lay->addLayout(form);
 
@@ -229,6 +244,12 @@ QWidget* CamPanel::buildDrillTab() {
     connect(drillRpm_, &QSpinBox::valueChanged, this, &CamPanel::regenDrill);
     connect(drillSingle_, &QCheckBox::toggled, this, &CamPanel::regenDrill);
     connect(drillMirror_, &QCheckBox::toggled, this, &CamPanel::regenDrill);
+    connect(drillRotate_, &QComboBox::currentIndexChanged, this,
+            [this](int i) {
+                if (isoRotate_ && isoRotate_->currentIndex() != i)
+                    isoRotate_->setCurrentIndex(i);
+                regenDrill();
+            });
     connect(drillSendBtn_, &QPushButton::clicked, this, [this] {
         if (!drillGcode_.isEmpty())
             emit sendToJob(drillGcode_, drillName_ + " [drill]");
@@ -516,6 +537,7 @@ void CamPanel::regenIso() {
     opt.spindleRpm = isoRpm_->value();
     opt.mirrorX = isoMirror_->isChecked();
     opt.fillHolesBelow = isoFillHoles_->value();
+    opt.rotateDeg = isoRotate_->currentIndex() * 90;
     auto iso = isolationRoute(g.layer, opt);
     if (!iso.ok) {
         isoSummary_->setText("Isolation error: " +
@@ -556,6 +578,7 @@ void CamPanel::regenDrill() {
     opt.spindleRpm = drillRpm_->value();
     opt.singleTool = drillSingle_->isChecked();
     opt.mirrorX = drillMirror_->isChecked();
+    opt.rotateDeg = drillRotate_->currentIndex() * 90;
     auto out = drillGcode(d, opt);
     if (!out.ok) {
         drillSummary_->setText("Drill error: " +
