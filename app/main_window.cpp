@@ -974,13 +974,34 @@ void MainWindow::runJob() {
 
 void MainWindow::zTouchOff() {
     if (!mc_->isConnected()) return;
-    bool ok = false;
     QSettings s;
-    double thickness = QInputDialog::getDouble(
-        this, "Z touch-off", "Probe puck thickness (mm):",
-        s.value("probe/puckZ", 0.0).toDouble(), 0, 50, 3, &ok);
-    if (!ok) return;
-    s.setValue("probe/puckZ", thickness);   // remembered for next time
+    const double puckZ = s.value("probe/puckZ", 0.0).toDouble();
+    // puck or bare probe is a per-use CHOICE; the stored thickness is
+    // only ever edited in Probe > Probe settings
+    QDialog dlg(this);
+    dlg.setWindowTitle("Z touch-off");
+    auto* lay = new QVBoxLayout(&dlg);
+    auto* usePuck = new QCheckBox(
+        QString("Probe on the touch puck (%1 mm, from Probe settings)")
+            .arg(puckZ, 0, 'f', 3));
+    usePuck->setChecked(s.value("probe/usePuck", true).toBool() &&
+                        puckZ > 0);
+    usePuck->setEnabled(puckZ > 0);
+    auto* note = new QLabel(
+        puckZ > 0 ? "Unchecked = probe the surface directly (offset 0)."
+                  : "No puck thickness set - probing directly. Set one in "
+                    "Probe > Probe settings.");
+    note->setWordWrap(true);
+    auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                    QDialogButtonBox::Cancel);
+    lay->addWidget(usePuck);
+    lay->addWidget(note);
+    lay->addWidget(bb);
+    connect(bb, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(bb, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    if (dlg.exec() != QDialog::Accepted) return;
+    s.setValue("probe/usePuck", usePuck->isChecked());
+    const double thickness = usePuck->isChecked() ? puckZ : 0.0;
     auto* conn = new QMetaObject::Connection;
     *conn = connect(mc_, &MachineClient::probeFinished, this,
                     [this, thickness, conn](bool good, double, double, double) {
