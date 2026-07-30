@@ -9,7 +9,10 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <cmath>
+#include <cstdio>
 #include <fstream>
+#include <sstream>
+#include <QTimer>
 
 #include "gcode/parser.h"
 #include "gcode_view3d.h"
@@ -91,12 +94,29 @@ ProbeDialog::ProbeDialog(MachineClient* mc, double minX, double minY,
                                  "No OpenGL context available.");
             return;
         }
-        auto* dlg = new HeightmapDialog(this);
+        // Parent to the MAIN WINDOW, not this dialog: a GL dialog child
+        // of an exec()'d dialog forces a transient hide of its parent,
+        // which exec() treats as "closed" - the wizard vanished and took
+        // the viewer with it (the "crash and hang" bug).
+        auto* dlg = new HeightmapDialog(window());
         dlg->setAttribute(Qt::WA_DeleteOnClose);
         dlg->setMap(map_);
         dlg->show();
     });
     connect(applyBtn_, &QPushButton::clicked, this, &QDialog::accept);
+
+    // repro/dev hook: preload a map and auto-open the 3D viewer
+    if (qEnvironmentVariableIsSet("SHARKCNC_PROBE3D_DEMO")) {
+        std::ifstream f(qgetenv("SHARKCNC_PROBE3D_DEMO").toStdString());
+        std::stringstream ss;
+        ss << f.rdbuf();
+        if (HeightMap::fromJson(ss.str(), map_)) {
+            mapDone_ = true;
+            saveBtn_->setEnabled(true);
+            viewBtn_->setEnabled(true);
+            QTimer::singleShot(600, viewBtn_, [this] { viewBtn_->click(); });
+        }
+    }
 }
 
 void ProbeDialog::startProbing() {

@@ -1021,6 +1021,8 @@ void MainWindow::zTouchOff() {
                    .arg(QSettings().value("probe/feed", 40.0).toDouble()));
 }
 
+void MainWindow::openProbeWizard() { heightMapWizard(); }
+
 void MainWindow::heightMapWizard() {
     double x0 = 0, y0 = 0, x1 = 30, y1 = 20;
     if (program_.hasBounds()) {
@@ -1029,10 +1031,15 @@ void MainWindow::heightMapWizard() {
         x1 = program_.max.x;
         y1 = program_.max.y;
     }
-    ProbeDialog dlg(mc_, x0, y0, x1, y1, this);
-    if (dlg.exec() == QDialog::Accepted && dlg.hasMap() &&
-        !programText_.isEmpty()) {
-        auto r = warpGcode(program_, dlg.map(), {});
+    // Non-modal: probing takes minutes and there is no reason to block
+    // the DRO/console meanwhile - and a modal wizard cannot host the 3D
+    // viewer (a GL child dialog transiently hides its exec()'d parent,
+    // which exec() treats as "closed").
+    auto* dlg = new ProbeDialog(mc_, x0, y0, x1, y1, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &QDialog::accepted, this, [this, dlg] {
+        if (!dlg->hasMap() || programText_.isEmpty()) return;
+        auto r = warpGcode(program_, dlg->map(), {});
         if (!r.ok) {
             QMessageBox::warning(this, "Warp failed",
                                  QString::fromStdString(r.error));
@@ -1042,7 +1049,8 @@ void MainWindow::heightMapWizard() {
                         windowTitle().section(" - ", 1) + " [warped]");
         statusBar()->showMessage(
             "Height map applied - review the preview, then Run", 8000);
-    }
+    });
+    dlg->show();
 }
 
 void MainWindow::appendConsole(const QString& line, bool sent) {

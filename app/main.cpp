@@ -4,6 +4,7 @@
 #include <QTimer>
 
 #include "main_window.h"
+#include "gcode_view3d.h"
 #include "heightmap_dialog.h"
 #include "tool_dialog.h"
 #include <QDialog>
@@ -95,6 +96,11 @@ int main(int argc, char** argv) {
     w.show();
     QDialog* dbgDlg = nullptr;
     if (cli.isSet(toolDlgOpt)) { dbgDlg = new ToolDialog(&w); dbgDlg->show(); }
+    // dev hook: SHARKCNC_PROBE3D_DEMO=<map.json> opens the probing
+    // wizard preloaded with the map and auto-clicks View in 3D (the
+    // regression path for the wizard-vanishes bug)
+    if (qEnvironmentVariableIsSet("SHARKCNC_PROBE3D_DEMO"))
+        QTimer::singleShot(100, &w, [&w] { w.openProbeWizard(); });
     if (cli.isSet(hmapOpt)) {
         auto* hd = new HeightmapDialog(&w);
         hd->loadFile(cli.value(hmapOpt));

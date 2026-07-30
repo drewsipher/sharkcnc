@@ -25,6 +25,7 @@ public:
     void autoConnectTcp(const QString& host, int port);
     void openCamGerber(const QString& path);
     void forceView3D();
+    void openProbeWizard();
     void loadStlPath(const QString& p);
     void setView3DPreset(const QString& p);
 
