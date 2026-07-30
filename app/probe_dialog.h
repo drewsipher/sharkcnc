@@ -34,7 +34,7 @@ private:
     size_t idx_ = 0;
     bool running_ = false, mapDone_ = false;
 
-    QDoubleSpinBox *x0_, *y0_, *w_, *h_, *spacing_, *clearZ_, *probeZ_, *feed_;
+    QDoubleSpinBox *x0_, *y0_, *x1_, *y1_, *spacing_, *clearZ_, *probeZ_, *feed_;
     QProgressBar* progress_;
     QPushButton *startBtn_, *saveBtn_, *applyBtn_;
     QLabel* info_;

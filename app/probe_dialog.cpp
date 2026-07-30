@@ -29,18 +29,22 @@ ProbeDialog::ProbeDialog(MachineClient* mc, double minX, double minY,
         s->setValue(v);
         return s;
     };
+    // Corner-to-corner: any origin convention works (e.g. 0,0 at the
+    // back-left corner with the board extending in -Y). The grid covers
+    // the rectangle between the two corners, in any quadrant, either
+    // corner first.
     x0_ = mk(minX, -1000, 1000);
     y0_ = mk(minY, -1000, 1000);
-    w_ = mk(std::max(1.0, maxX - minX), 1, 1000);
-    h_ = mk(std::max(1.0, maxY - minY), 1, 1000);
+    x1_ = mk(std::max(minX + 1.0, maxX), -1000, 1000);
+    y1_ = mk(std::max(minY + 1.0, maxY), -1000, 1000);
     spacing_ = mk(7.5, 1, 100);
     clearZ_ = mk(2.0, 0.1, 50, 0.5);
     probeZ_ = mk(-2.0, -20, 0, 0.5);
     feed_ = mk(40, 1, 500, 10);
-    form->addRow("Origin X (work)", x0_);
-    form->addRow("Origin Y (work)", y0_);
-    form->addRow("Width mm", w_);
-    form->addRow("Height mm", h_);
+    form->addRow("Corner 1 X (work)", x0_);
+    form->addRow("Corner 1 Y (work)", y0_);
+    form->addRow("Corner 2 X (work)", x1_);
+    form->addRow("Corner 2 Y (work)", y1_);
     form->addRow("Grid spacing mm", spacing_);
     form->addRow("Clearance Z", clearZ_);
     form->addRow("Probe target Z", probeZ_);
@@ -85,12 +89,21 @@ void ProbeDialog::startProbing() {
                              "Connect to the machine first.");
         return;
     }
-    int nx = std::max(2, static_cast<int>(std::ceil(w_->value() /
+    const double gx0 = std::min(x0_->value(), x1_->value());
+    const double gy0 = std::min(y0_->value(), y1_->value());
+    const double gw = std::abs(x1_->value() - x0_->value());
+    const double gh = std::abs(y1_->value() - y0_->value());
+    if (gw < 0.5 || gh < 0.5) {
+        QMessageBox::warning(this, "Probe area",
+                             "The two corners span less than 0.5 mm - "
+                             "check the corner coordinates.");
+        return;
+    }
+    int nx = std::max(2, static_cast<int>(std::ceil(gw /
                                                     spacing_->value())) + 1);
-    int ny = std::max(2, static_cast<int>(std::ceil(h_->value() /
+    int ny = std::max(2, static_cast<int>(std::ceil(gh /
                                                     spacing_->value())) + 1);
-    map_ = HeightMap(x0_->value(), y0_->value(),
-                     w_->value() / (nx - 1), h_->value() / (ny - 1), nx, ny);
+    map_ = HeightMap(gx0, gy0, gw / (nx - 1), gh / (ny - 1), nx, ny);
     points_ = map_.probeOrder();
     idx_ = 0;
     running_ = true;

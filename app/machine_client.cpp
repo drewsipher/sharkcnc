@@ -93,7 +93,9 @@ void MachineClient::resume() { drv_->resume(); }
 
 void MachineClient::zeroWork(const QString& axes) {
     QString cmd = "G10 L20 P0";
-    for (QChar a : axes) cmd += QString(" %10").arg(a);
+    // NB: QString(" %10").arg() reads %10 as place-marker TEN and eats
+    // the zero -> "G10 L20 P0 Y" (error:2). Build it by concatenation.
+    for (QChar a : axes) cmd += ' ' + QString(a) + '0';
     drv_->sendCommand(cmd.toStdString());
 }
 
