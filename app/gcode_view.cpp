@@ -30,7 +30,8 @@ void GcodeView::clearProgram() {
     update();
 }
 
-void GcodeView::setCopper(const Clipper2Lib::PathsD& copper) {
+void GcodeView::setCopper(const Clipper2Lib::PathsD& copper,
+                          const Clipper2Lib::PathsD& filledVoids) {
     copper_.clear();
     for (const auto& path : copper) {
         QPolygonF poly;
@@ -38,11 +39,19 @@ void GcodeView::setCopper(const Clipper2Lib::PathsD& copper) {
         for (const auto& pt : path) poly << QPointF(pt.x, -pt.y);
         copper_ << poly;
     }
+    filledVoids_.clear();
+    for (const auto& path : filledVoids) {
+        QPolygonF poly;
+        poly.reserve(static_cast<int>(path.size()));
+        for (const auto& pt : path) poly << QPointF(pt.x, -pt.y);
+        filledVoids_ << poly;
+    }
     update();
 }
 
 void GcodeView::clearCopper() {
     copper_.clear();
+    filledVoids_.clear();
     update();
 }
 
@@ -152,6 +161,14 @@ void GcodeView::paintEvent(QPaintEvent*) {
         for (const auto& poly : copper_) cp.addPolygon(poly);
         cp.closeSubpath();
         p.drawPath(cp);
+        p.setBrush(Qt::NoBrush);
+    }
+
+    // voids the isolation hole-fill removed: highlighted, not hidden
+    if (!filledVoids_.isEmpty()) {
+        p.setPen(QPen(QColor(235, 120, 40, 220), 0));
+        p.setBrush(QColor(235, 120, 40, 110));
+        for (const auto& poly : filledVoids_) p.drawPolygon(poly);
         p.setBrush(Qt::NoBrush);
     }
 

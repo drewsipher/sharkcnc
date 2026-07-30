@@ -77,7 +77,10 @@ IsolationResult isolationRoute(const GerberLayer& layer,
     // Rebuild the copper as a nesting tree so we can tell a *drill hole* (an
     // enclosed void with no copper island inside it) from a *pour clearance*
     // (a void that surrounds an isolated pad/trace). Both can be small, so
-    // size alone can't distinguish them - topology does.
+    // size alone can't distinguish them - topology does. Size alone also
+    // can't distinguish a drill hole from a thermal-relief spoke or a text
+    // knockout, so a fill additionally requires the void to be ROUND
+    // (isoperimetric ratio) - drills are circles, spokes and letters aren't.
     {
         ClipperD cl;
         cl.AddSubject(copper);
@@ -87,12 +90,25 @@ IsolationResult isolationRoute(const GerberLayer& layer,
         std::function<void(const PolyPathD*)> walk = [&](const PolyPathD* node) {
             for (size_t i = 0; i < node->Count(); ++i) {
                 const PolyPathD* ch = node->Child(i);
+                res.trueCopper.push_back(ch->Polygon());
                 bool fill = false;
                 if (ch->IsHole() && ch->Count() == 0 && opt.fillHolesBelow > 0) {
                     auto b = GetBounds(PathsD{ch->Polygon()});
-                    fill = std::max(b.Width(), b.Height()) < opt.fillHolesBelow;
+                    if (std::max(b.Width(), b.Height()) < opt.fillHolesBelow) {
+                        const PathD& p = ch->Polygon();
+                        double a = std::abs(Area(p)), per = 0;
+                        for (size_t k = 0; k < p.size(); ++k) {
+                            const auto& s = p[k];
+                            const auto& e = p[(k + 1) % p.size()];
+                            per += std::hypot(s.x - e.x, s.y - e.y);
+                        }
+                        double roundness =
+                            per > 0 ? 4.0 * M_PI * a / (per * per) : 0;
+                        fill = roundness >= opt.fillRoundness;
+                    }
                 }
-                if (!fill) cleaned.push_back(ch->Polygon());
+                if (fill) res.filledVoids.push_back(ch->Polygon());
+                else cleaned.push_back(ch->Polygon());
                 walk(ch);  // childless holes have no subtree, so this is safe
             }
         };

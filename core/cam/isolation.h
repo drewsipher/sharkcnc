@@ -20,8 +20,14 @@ struct IsolationOptions {
     bool mirrorX = false;        // for bottom layers: x -> -x
     // Fill interior copper voids smaller than this (max bbox dimension, mm)
     // so drill/via holes aren't isolated; larger voids (pour clearances)
-    // are kept. 0 disables hole filling.
+    // are kept. Only voids that are round (drill-like) are filled — text
+    // knockouts and thermal-relief spokes are elongated and survive.
+    // 0 disables hole filling.
     double fillHolesBelow = 2.5;
+    // Isoperimetric roundness gate (4*pi*A/P^2): a circle scores ~1.0, a
+    // square 0.785, thermal spokes and letter strokes 0.4-0.7. Voids at
+    // or above this are considered drill-like.
+    double fillRoundness = 0.8;
 };
 
 struct IsolationResult {
@@ -29,7 +35,9 @@ struct IsolationResult {
     std::string error;
     std::string gcode;
     Clipper2Lib::PathsD toolpaths;     // for preview
+    Clipper2Lib::PathsD trueCopper;    // merged copper, exactly as parsed
     Clipper2Lib::PathsD cleanedCopper; // copper after merge + hole fill
+    Clipper2Lib::PathsD filledVoids;   // the voids the fill rule removed
     double lengthMm = 0;               // total cutting length
 };
 

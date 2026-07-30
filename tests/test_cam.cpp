@@ -424,5 +424,64 @@ TEST_CASE("real poured board: pads stay solid (no cross-category voids)") {
     o.toolDiameter = 0.2;
     auto iso = isolationRoute(g.layer, o);
     REQUIRE(iso.ok);
-    CHECK(iso.toolpaths.size() < 160);  // was 264+ with the void bug
+    // 179 with the round-gated hole fill (thermal spokes are correctly
+    // kept as voids now); the keyhole bug this guards against gave 264+.
+    CHECK(iso.toolpaths.size() < 200);
+}
+
+TEST_CASE("hole fill is round-gated: text and thermal spokes survive") {
+    // Regression for the rev D CAM report: the size-only fill rule ate
+    // text knockouts and thermal-relief spokes (both < 2.5 mm) as if they
+    // were drill holes. Fills now also require the void to be ROUND.
+    using namespace Clipper2Lib;
+    GerberLayer layer;
+    // 20x20 copper square...
+    layer.copper.push_back(
+        PathD{{0.0, 0.0}, {20.0, 0.0}, {20.0, 20.0}, {0.0, 20.0}});
+    // ...with a 1 mm round void (drill-like: should be filled)...
+    PathD circle;
+    for (int i = 0; i < 64; ++i) {
+        double a = 2 * M_PI * i / 64;
+        circle.push_back({5 + 0.5 * std::cos(a), 5 - 0.5 * std::sin(a)});
+    }
+    layer.copper.push_back(circle);   // reverse winding = hole
+    // ...and a 2.0 x 0.5 mm bar void (a letter stroke / thermal spoke:
+    // must be KEPT even though it is smaller than fillHolesBelow)
+    layer.copper.push_back(
+        PathD{{10.0, 10.0}, {10.0, 10.5}, {12.0, 10.5}, {12.0, 10.0}});
+    layer.minX = 0; layer.maxX = 20; layer.minY = 0; layer.maxY = 20;
+
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    o.fillHolesBelow = 2.5;
+    auto iso = isolationRoute(layer, o);
+    REQUIRE(iso.ok);
+    CHECK(iso.filledVoids.size() == 1);          // the circle, only
+    // the bar survives in the cleaned copper
+    int bars = 0;
+    for (const auto& p : iso.cleanedCopper) {
+        auto b = GetBounds(PathsD{p});
+        if (std::abs(b.Width() - 2.0) < 0.1 &&
+            std::abs(b.Height() - 0.5) < 0.1)
+            ++bars;
+    }
+    CHECK(bars == 1);
+    // trueCopper keeps everything, fills included
+    CHECK(iso.trueCopper.size() == iso.cleanedCopper.size() +
+                                       iso.filledVoids.size());
+}
+
+TEST_CASE("revD board: thermal reliefs and copper text survive isolation") {
+    // The fabbed rev D bottom copper has 47 childless voids - ALL of them
+    // thermal spokes or text strokes (KiCad puts drill holes in the drill
+    // file, not the copper gerber). None of them may be filled.
+    auto text = readFixture("revD_B_Cu.gbr");
+    auto g = parseGerber(text);
+    REQUIRE(g.ok);
+    IsolationOptions o;
+    o.toolDiameter = 0.2;
+    auto iso = isolationRoute(g.layer, o);
+    REQUIRE(iso.ok);
+    CHECK(iso.filledVoids.empty());
+    CHECK(iso.trueCopper.size() == iso.cleanedCopper.size());
 }

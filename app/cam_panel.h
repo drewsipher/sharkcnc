@@ -27,7 +27,9 @@ public:
 signals:
     // A layer's toolpaths changed; host shows copper (may be empty) + gcode
     // preview without loading it as the active job.
-    void previewReady(const Clipper2Lib::PathsD& copper, const QString& gcode,
+    void previewReady(const Clipper2Lib::PathsD& copper,
+                      const Clipper2Lib::PathsD& filledVoids,
+                      const QString& gcode,
                       const QString& title);
     // User pressed "Load into sender".
     void sendToJob(const QString& gcode, const QString& title);

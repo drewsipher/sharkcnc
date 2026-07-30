@@ -87,12 +87,13 @@ MainWindow::MainWindow() {
     camDock->setWidget(cam_);
     addDockWidget(Qt::RightDockWidgetArea, camDock);
     connect(cam_, &CamPanel::previewReady, this,
-            [this](const Clipper2Lib::PathsD& copper, const QString& gcode,
-                   const QString& title) {
+            [this](const Clipper2Lib::PathsD& copper,
+                   const Clipper2Lib::PathsD& filledVoids,
+                   const QString& gcode, const QString& title) {
                 program_ = parseGcode(gcode.toStdString());
                 programText_ = gcode;
                 showProgram(program_);
-                view_->setCopper(copper);
+                view_->setCopper(copper, filledVoids);
                 setWindowTitle("SharkCNC - " + title + " (preview)");
                 statusBar()->showMessage(
                     "CAM preview - adjust params, then Load into sender",

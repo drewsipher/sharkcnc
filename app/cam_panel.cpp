@@ -413,7 +413,8 @@ void CamPanel::regenOutline() {
     outSummary_->setText(QString("%1 pass(es), %2 tabs")
                              .arg(r.passes)
                              .arg(o.tabs));
-    emit previewReady(Clipper2Lib::PathsD{}, outGcode_, "outline");
+    emit previewReady(Clipper2Lib::PathsD{}, Clipper2Lib::PathsD{},
+                      outGcode_, "outline");
 }
 
 void CamPanel::setFacingArea(double x0, double y0, double ww, double hh) {
@@ -451,7 +452,8 @@ void CamPanel::regenFace() {
     faceSummary_->setText(QString("%1 pass(es), %2 mm of cutting")
                               .arg(r.passes)
                               .arg(r.lengthMm, 0, 'f', 0));
-    emit previewReady(Clipper2Lib::PathsD{}, faceGcode_, "facing");
+    emit previewReady(Clipper2Lib::PathsD{}, Clipper2Lib::PathsD{},
+                      faceGcode_, "facing");
 }
 
 void CamPanel::browseGerber() {
@@ -527,16 +529,20 @@ void CamPanel::regenIso() {
     QString warn;
     for (auto& wtxt : g.layer.warnings)
         warn += "\n⚠ " + QString::fromStdString(wtxt);
-    isoSummary_->setText(QString("%1 toolpaths, %2 mm cutting, board %3×%4 mm%5")
-                             .arg(iso.toolpaths.size())
-                             .arg(iso.lengthMm, 0, 'f', 0)
-                             .arg(g.layer.maxX - g.layer.minX, 0, 'f', 1)
-                             .arg(g.layer.maxY - g.layer.minY, 0, 'f', 1)
-                             .arg(warn));
+    isoSummary_->setText(
+        QString("%1 toolpaths, %2 mm cutting, board %3×%4 mm, "
+                "%5 holes filled%6")
+            .arg(iso.toolpaths.size())
+            .arg(iso.lengthMm, 0, 'f', 0)
+            .arg(g.layer.maxX - g.layer.minX, 0, 'f', 1)
+            .arg(g.layer.maxY - g.layer.minY, 0, 'f', 1)
+            .arg(iso.filledVoids.size())
+            .arg(warn));
 
-    // show the cleaned copper (merged, drill holes filled) so the overlay
-    // matches exactly what the toolpaths isolate
-    emit previewReady(iso.cleanedCopper, isoGcode_,
+    // show the TRUE merged copper plus a highlight of any voids the
+    // hole-fill rule removed, so what you see is the real gerber and the
+    // fill decisions are visible (and tunable) rather than silent
+    emit previewReady(iso.trueCopper, iso.filledVoids, isoGcode_,
                       gerberName_ + " [isolation]");
 }
 
@@ -567,6 +573,7 @@ void CamPanel::regenDrill() {
                      .arg(t.diameter, 0, 'f', 2)
                      .arg(t.count);
     drillSummary_->setText(QString("%1 holes%2").arg(out.holes).arg(tools));
-    emit previewReady(Clipper2Lib::PathsD{}, drillGcode_,
+    emit previewReady(Clipper2Lib::PathsD{}, Clipper2Lib::PathsD{},
+                      drillGcode_,
                       drillName_ + " [drill]");
 }
