@@ -4,6 +4,7 @@
 #include <QTimer>
 
 #include "main_window.h"
+#include "heightmap_dialog.h"
 #include "tool_dialog.h"
 #include <QDialog>
 
@@ -64,11 +65,14 @@ int main(int argc, char** argv) {
     cli.addOption(camGerberOpt);
     QCommandLineOption toolDlgOpt("tool-dialog", "Open the tool library dialog (debug)");
     QCommandLineOption v3dOpt("view3d", "Start in 3D view (debug)");
+    QCommandLineOption hmapOpt("heightmap", "Open the height map viewer (debug)",
+                               "json");
     QCommandLineOption v3pOpt("v3d-preset","3D preset top/front/iso (debug)","p"); cli.addOption(v3pOpt);
     QCommandLineOption stlOpt("stl", "Load an STL on startup (debug)", "file");
     cli.addOption(stlOpt);
     cli.addOption(v3dOpt);
     cli.addOption(toolDlgOpt);
+    cli.addOption(hmapOpt);
     QCommandLineOption shotOpt("screenshot",
                                "Save a window capture after 3s and exit "
                                "(works with QT_QPA_PLATFORM=offscreen)",
@@ -91,6 +95,12 @@ int main(int argc, char** argv) {
     w.show();
     QDialog* dbgDlg = nullptr;
     if (cli.isSet(toolDlgOpt)) { dbgDlg = new ToolDialog(&w); dbgDlg->show(); }
+    if (cli.isSet(hmapOpt)) {
+        auto* hd = new HeightmapDialog(&w);
+        hd->loadFile(cli.value(hmapOpt));
+        hd->show();
+        dbgDlg = hd;
+    }
     if (cli.isSet(shotOpt)) {
         QString out = cli.value(shotOpt);
         QTimer::singleShot(3000, &w, [&w, out, dbgDlg] {

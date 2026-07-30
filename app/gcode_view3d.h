@@ -12,6 +12,11 @@
 #include <QVector3D>
 
 #include "gcode/parser.h"
+#include "heightmap/heightmap.h"
+
+// True only when a real OpenGL context can be created (false on headless
+// or broken drivers, where constructing a QOpenGLWidget crashes).
+bool openglAvailable();
 
 class GcodeView3D : public QOpenGLWidget, protected QOpenGLFunctions_3_3_Core {
     Q_OBJECT
@@ -24,6 +29,9 @@ public:
     void setToolPosition(double x, double y, double z);
     bool loadStl(const QString& path);   // triangles, mm
     void clearMesh();
+    // Probed surface: colored, Z-exaggerated relief of a HeightMap.
+    void setHeightMap(const scnc::HeightMap& m, double exaggeration);
+    void clearHeightMap();
 
     void setPerspective(bool on);
     bool perspective() const { return perspective_; }
@@ -50,15 +58,22 @@ private:
 
     scnc::Program prog_;
 
-    QOpenGLShaderProgram lineProg_, meshProg_;
+    QOpenGLShaderProgram lineProg_, meshProg_, hmapProg_;
     QOpenGLBuffer cutVbo_{QOpenGLBuffer::VertexBuffer};
     QOpenGLBuffer rapidVbo_{QOpenGLBuffer::VertexBuffer};
     QOpenGLBuffer gridVbo_{QOpenGLBuffer::VertexBuffer};
     QOpenGLBuffer meshVbo_{QOpenGLBuffer::VertexBuffer};
-    QOpenGLVertexArrayObject cutVao_, rapidVao_, gridVao_, meshVao_;
-    int cutCount_ = 0, rapidCount_ = 0, gridCount_ = 0, meshCount_ = 0;
-    bool buffersDirty_ = false, gridDirty_ = true, meshDirty_ = false;
+    QOpenGLBuffer hmapVbo_{QOpenGLBuffer::VertexBuffer};
+    QOpenGLBuffer hmapWireVbo_{QOpenGLBuffer::VertexBuffer};
+    QOpenGLVertexArrayObject cutVao_, rapidVao_, gridVao_, meshVao_,
+        hmapVao_, hmapWireVao_;
+    int cutCount_ = 0, rapidCount_ = 0, gridCount_ = 0, meshCount_ = 0,
+        hmapCount_ = 0, hmapWireCount_ = 0;
+    bool buffersDirty_ = false, gridDirty_ = true, meshDirty_ = false,
+         hmapDirty_ = false;
     std::vector<float> meshData_;   // pos+normal, uploaded lazily in paintGL
+    std::vector<float> hmapData_;   // pos+normal+color (9 floats/vertex)
+    std::vector<float> hmapWire_;   // grid wireframe line pairs
 
     // camera: quaternion arcball orientation of the scene
     QQuaternion rot_;

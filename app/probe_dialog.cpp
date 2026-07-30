@@ -12,6 +12,8 @@
 #include <fstream>
 
 #include "gcode/parser.h"
+#include "gcode_view3d.h"
+#include "heightmap_dialog.h"
 #include "machine_client.h"
 
 using namespace scnc;
@@ -57,8 +59,10 @@ ProbeDialog::ProbeDialog(MachineClient* mc, double minX, double minY,
     info_->setWordWrap(true);
     startBtn_ = new QPushButton("Start probing");
     saveBtn_ = new QPushButton("Save map...");
+    viewBtn_ = new QPushButton("View in 3D...");
     applyBtn_ = new QPushButton("Apply to loaded G-code");
     saveBtn_->setEnabled(false);
+    viewBtn_->setEnabled(false);
     applyBtn_->setEnabled(false);
 
     auto* lay = new QVBoxLayout(this);
@@ -67,6 +71,7 @@ ProbeDialog::ProbeDialog(MachineClient* mc, double minX, double minY,
     lay->addWidget(progress_);
     lay->addWidget(startBtn_);
     lay->addWidget(saveBtn_);
+    lay->addWidget(viewBtn_);
     lay->addWidget(applyBtn_);
 
     connect(startBtn_, &QPushButton::clicked, this,
@@ -79,6 +84,17 @@ ProbeDialog::ProbeDialog(MachineClient* mc, double minX, double minY,
         if (fn.isEmpty()) return;
         std::ofstream f(fn.toStdString());
         f << map_.toJson();
+    });
+    connect(viewBtn_, &QPushButton::clicked, this, [this] {
+        if (!openglAvailable()) {
+            QMessageBox::warning(this, "Height map",
+                                 "No OpenGL context available.");
+            return;
+        }
+        auto* dlg = new HeightmapDialog(this);
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+        dlg->setMap(map_);
+        dlg->show();
     });
     connect(applyBtn_, &QPushButton::clicked, this, &QDialog::accept);
 }
@@ -119,6 +135,7 @@ void ProbeDialog::nextPoint() {
         running_ = false;
         mapDone_ = true;
         saveBtn_->setEnabled(true);
+        viewBtn_->setEnabled(true);
         applyBtn_->setEnabled(true);
         startBtn_->setEnabled(true);
         info_->setText("Probing complete.");

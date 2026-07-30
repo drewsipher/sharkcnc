@@ -2,7 +2,10 @@
 
 #include <QFile>
 #include <QMouseEvent>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
 #include <QWheelEvent>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -37,7 +40,35 @@ void main(){
   frag = vec4(color.rgb * d, color.a);
 }
 )";
+const char* kHmapVert = R"(#version 330 core
+layout(location=0) in vec3 pos;
+layout(location=1) in vec3 nrm;
+layout(location=2) in vec3 col;
+uniform mat4 mvp;
+out vec3 vN;
+out vec3 vC;
+void main(){ vN = nrm; vC = col; gl_Position = mvp * vec4(pos,1.0); }
+)";
+const char* kHmapFrag = R"(#version 330 core
+in vec3 vN;
+in vec3 vC;
+out vec4 frag;
+void main(){
+  vec3 L = normalize(vec3(0.4, 0.5, 0.8));
+  float d = 0.45 + 0.55 * abs(dot(normalize(vN), L));
+  frag = vec4(vC * d, 1.0);
+}
+)";
 }  // namespace
+
+bool openglAvailable() {
+    QOpenGLContext ctx;
+    if (!ctx.create()) return false;
+    QOffscreenSurface surf;
+    surf.setFormat(ctx.format());
+    surf.create();
+    return surf.isValid() && ctx.makeCurrent(&surf);
+}
 
 GcodeView3D::GcodeView3D(QWidget* parent) : QOpenGLWidget(parent) {
     viewIso();  // start in an isometric orientation
@@ -57,6 +88,8 @@ GcodeView3D::~GcodeView3D() {
         rapidVbo_.destroy();
         gridVbo_.destroy();
         meshVbo_.destroy();
+        hmapVbo_.destroy();
+        hmapWireVbo_.destroy();
         doneCurrent();
     }
 }
@@ -121,14 +154,21 @@ void GcodeView3D::initializeGL() {
     meshProg_.addShaderFromSourceCode(QOpenGLShader::Vertex, kMeshVert);
     meshProg_.addShaderFromSourceCode(QOpenGLShader::Fragment, kMeshFrag);
     meshProg_.link();
+    hmapProg_.addShaderFromSourceCode(QOpenGLShader::Vertex, kHmapVert);
+    hmapProg_.addShaderFromSourceCode(QOpenGLShader::Fragment, kHmapFrag);
+    hmapProg_.link();
     cutVbo_.create();
     rapidVbo_.create();
     gridVbo_.create();
     meshVbo_.create();
+    hmapVbo_.create();
+    hmapWireVbo_.create();
     cutVao_.create();
     rapidVao_.create();
     gridVao_.create();
     meshVao_.create();
+    hmapVao_.create();
+    hmapWireVao_.create();
 }
 
 void GcodeView3D::uploadLines(QOpenGLBuffer& vbo,
@@ -237,6 +277,26 @@ void GcodeView3D::paintGL() {
         }
         meshDirty_ = false;
     }
+    if (hmapDirty_) {
+        hmapVao_.bind();
+        hmapVbo_.bind();
+        hmapVbo_.allocate(hmapData_.data(),
+                          int(hmapData_.size() * sizeof(float)));
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
+                              nullptr);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
+                              reinterpret_cast<void*>(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
+                              reinterpret_cast<void*>(6 * sizeof(float)));
+        hmapVbo_.release();
+        hmapVao_.release();
+        hmapCount_ = int(hmapData_.size() / 9);
+        uploadLines(hmapWireVbo_, hmapWireVao_, hmapWire_, hmapWireCount_);
+        hmapDirty_ = false;
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     QMatrix4x4 mvp = projection() * modelView();
 
@@ -279,6 +339,23 @@ void GcodeView3D::paintGL() {
     glDrawArrays(GL_LINES, 0, cutCount_);
     cutVao_.release();
     lineProg_.release();
+
+    // probed height-map surface + its wireframe
+    if (hmapCount_ > 0) {
+        hmapProg_.bind();
+        hmapProg_.setUniformValue("mvp", mvp);
+        hmapVao_.bind();
+        glDrawArrays(GL_TRIANGLES, 0, hmapCount_);
+        hmapVao_.release();
+        hmapProg_.release();
+        lineProg_.bind();
+        lineProg_.setUniformValue("mvp", mvp);
+        lineProg_.setUniformValue("color", QVector4D(0.10f, 0.11f, 0.12f, 1));
+        hmapWireVao_.bind();
+        glDrawArrays(GL_LINES, 0, hmapWireCount_);
+        hmapWireVao_.release();
+        lineProg_.release();
+    }
 
     // mesh (stock/part)
     if (meshCount_ > 0) {
@@ -382,6 +459,84 @@ bool GcodeView3D::loadStl(const QString& path) {
     meshDirty_ = true;
     update();
     return true;
+}
+
+void GcodeView3D::setHeightMap(const scnc::HeightMap& m, double ex) {
+    hmapData_.clear();
+    hmapWire_.clear();
+    hmapCount_ = hmapWireCount_ = 0;
+    if (m.valid()) {
+        const int nx = m.nx(), ny = m.ny();
+        double zmin = 1e30, zmax = -1e30;
+        for (int j = 0; j < ny; ++j)
+            for (int i = 0; i < nx; ++i) {
+                zmin = std::min(zmin, m.at(i, j));
+                zmax = std::max(zmax, m.at(i, j));
+            }
+        // diverging color around Z=0: blue below, neutral gray at 0, red above
+        const double range = std::max({std::abs(zmin), std::abs(zmax), 1e-9});
+        auto color = [&](double z, float* rgb) {
+            double t = std::clamp(z / range, -1.0, 1.0);
+            const float mid[3] = {0.58f, 0.58f, 0.56f};
+            const float blue[3] = {0.25f, 0.47f, 0.85f};
+            const float red[3] = {0.85f, 0.33f, 0.24f};
+            const float* pole = t < 0 ? blue : red;
+            float a = float(std::abs(t));
+            for (int k = 0; k < 3; ++k)
+                rgb[k] = mid[k] * (1 - a) + pole[k] * a;
+        };
+        auto P = [&](int i, int j) {
+            return QVector3D(float(m.x0() + i * m.dx()),
+                             float(m.y0() + j * m.dy()),
+                             float(m.at(i, j) * ex));
+        };
+        auto N = [&](int i, int j) {
+            // central differences on the exaggerated surface
+            int i0 = std::max(0, i - 1), i1 = std::min(nx - 1, i + 1);
+            int j0 = std::max(0, j - 1), j1 = std::min(ny - 1, j + 1);
+            QVector3D du = P(i1, j) - P(i0, j);
+            QVector3D dv = P(i, j1) - P(i, j0);
+            QVector3D n = QVector3D::crossProduct(du, dv).normalized();
+            return n.z() < 0 ? -n : n;
+        };
+        auto emit1 = [&](int i, int j) {
+            QVector3D p = P(i, j), n = N(i, j);
+            float rgb[3];
+            color(m.at(i, j), rgb);
+            hmapData_.insert(hmapData_.end(),
+                             {p.x(), p.y(), p.z(), n.x(), n.y(), n.z(),
+                              rgb[0], rgb[1], rgb[2]});
+        };
+        for (int j = 0; j + 1 < ny; ++j)
+            for (int i = 0; i + 1 < nx; ++i) {
+                emit1(i, j);     emit1(i + 1, j); emit1(i + 1, j + 1);
+                emit1(i, j);     emit1(i + 1, j + 1); emit1(i, j + 1);
+            }
+        // wireframe slightly above the surface so it never z-fights
+        const float lift = float(range * ex * 0.01 + 0.02);
+        auto W = [&](int i, int j) {
+            QVector3D p = P(i, j);
+            hmapWire_.insert(hmapWire_.end(), {p.x(), p.y(), p.z() + lift});
+        };
+        for (int j = 0; j < ny; ++j)
+            for (int i = 0; i + 1 < nx; ++i) { W(i, j); W(i + 1, j); }
+        for (int i = 0; i < nx; ++i)
+            for (int j = 0; j + 1 < ny; ++j) { W(i, j); W(i, j + 1); }
+        // frame the map
+        double w = (nx - 1) * m.dx(), hgt = (ny - 1) * m.dy();
+        target_ = {float(m.x0() + w / 2), float(m.y0() + hgt / 2), 0};
+        boundR_ = std::max(5.0, 0.55 * std::hypot(w, hgt));
+        dist_ = float(boundR_ * 2.2);
+    }
+    hmapDirty_ = true;
+    update();
+}
+
+void GcodeView3D::clearHeightMap() {
+    hmapData_.clear();
+    hmapWire_.clear();
+    hmapDirty_ = true;
+    update();
 }
 
 void GcodeView3D::clearMesh() {

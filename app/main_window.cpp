@@ -33,19 +33,10 @@
 #include <QUrl>
 
 namespace {
-// True only when a real OpenGL context can be created. False on headless
-// (offscreen/minimal) or a broken GL driver, where QOpenGLWidget crashes.
-bool openglAvailable() {
-    QOpenGLContext ctx;
-    if (!ctx.create()) return false;
-    QOffscreenSurface surf;
-    surf.setFormat(ctx.format());
-    surf.create();
-    return surf.isValid() && ctx.makeCurrent(&surf);
-}
 }  // namespace
 
 #include "cam_panel.h"
+#include "heightmap_dialog.h"
 #include "gcode/resume.h"
 #include "gcode/warp.h"
 #include "gcode_view.h"
@@ -176,9 +167,15 @@ MainWindow::MainWindow() {
                         mode3d->setChecked(true);
                         view3d_->viewIso();
                     });
+    view->addSeparator();
+    auto* hmapAct = view->addAction("&Height map...", this, [this] {
+        auto* dlg = new HeightmapDialog(this);
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+        dlg->show();
+    });
     // 3D controls are inert without an OpenGL context
     if (!view3d_)
-        for (QAction* a : {mode3d, persp}) a->setEnabled(false);
+        for (QAction* a : {mode3d, persp, hmapAct}) a->setEnabled(false);
     view->addSeparator();
     view->addAction("Zoom &in", QKeySequence::ZoomIn, this,
                     [this] { view_->zoom(1.25); });

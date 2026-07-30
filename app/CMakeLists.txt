@@ -6,6 +6,7 @@ qt_add_executable(sharkcnc
   gcode_view.cpp
   gcode_view3d.cpp
   main_window.cpp
+  heightmap_dialog.cpp
   probe_dialog.cpp
   cam_panel.cpp
   tool_library.cpp
