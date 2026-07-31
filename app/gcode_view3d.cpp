@@ -120,6 +120,13 @@ void GcodeView3D::clearProgram() {
 void GcodeView3D::setToolPosition(double x, double y, double z) {
     tool_ = {float(x), float(y), float(z)};
     haveTool_ = true;
+    if (followTool_) target_ = tool_;
+    update();
+}
+
+void GcodeView3D::setFollowTool(bool on) {
+    followTool_ = on;
+    if (on && haveTool_) target_ = tool_;
     update();
 }
 

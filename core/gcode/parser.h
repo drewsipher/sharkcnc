@@ -52,4 +52,10 @@ std::vector<Vec3> splitLinear(const Vec3& from, const Vec3& to, double maxLen);
 // Format a double the way controllers like: fixed, trimmed zeros.
 std::string fmtNum(double v);
 
+// Estimated cumulative machining time (seconds) at completion of each
+// 1-based source line; index 0 = 0. Cuts use the segment feed, rapids
+// the given rate (mm/min). Arcs measured along tessellated chords.
+std::vector<double> cumulativeSeconds(const Program& p,
+                                      double rapidRate = 700);
+
 }  // namespace scnc

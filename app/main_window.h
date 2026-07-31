@@ -28,6 +28,7 @@ public:
     void openCamGerber(const QString& path);
     void forceView3D();
     void applyHeightMap(const scnc::HeightMap& hm);
+    static QString fmtDuration(double seconds);
     scnc::HeightMap lastMap_;   // most recent probed/loaded height map
     void openProbeWizard();
     void loadStlPath(const QString& p);
@@ -102,6 +103,7 @@ private:
     QPushButton *runBtn_, *holdBtn_, *stopBtn_;
     QProgressBar* jobBar_;
     int lastAcked_ = 0, lastTotal_ = 0;
+    std::vector<double> cumTime_;   // est. seconds at each line
     bool jobActive_ = false;
     void stashRecovery();
     void offerRecovery();

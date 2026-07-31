@@ -235,4 +235,38 @@ std::string fmtNum(double v) {
     return s;
 }
 
+
+std::vector<double> cumulativeSeconds(const Program& p, double rapidRate) {
+    std::vector<double> cum(p.lines.size() + 1, 0.0);
+    size_t seg = 0;
+    double t = 0;
+    for (size_t li = 0; li < p.lines.size(); ++li) {
+        const int lineNo = static_cast<int>(li + 1);
+        while (seg < p.segments.size() && p.segments[seg].line == lineNo) {
+            const Segment& s = p.segments[seg++];
+            double len = 0;
+            if (s.type == MotionType::ArcCW || s.type == MotionType::ArcCCW) {
+                Vec3 prev = s.from;
+                for (auto& q : tessellateArc(s, 0.1)) {
+                    len += std::sqrt((q.x - prev.x) * (q.x - prev.x) +
+                                     (q.y - prev.y) * (q.y - prev.y) +
+                                     (q.z - prev.z) * (q.z - prev.z));
+                    prev = q;
+                }
+            } else {
+                len = std::sqrt(
+                    (s.to.x - s.from.x) * (s.to.x - s.from.x) +
+                    (s.to.y - s.from.y) * (s.to.y - s.from.y) +
+                    (s.to.z - s.from.z) * (s.to.z - s.from.z));
+            }
+            double rate = s.type == MotionType::Rapid
+                              ? rapidRate
+                              : (s.feed > 0 ? s.feed : rapidRate);
+            if (rate > 0) t += len / rate * 60.0;
+        }
+        cum[li + 1] = t;
+    }
+    return cum;
+}
+
 }  // namespace scnc

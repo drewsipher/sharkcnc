@@ -27,6 +27,7 @@ public:
     void setProgram(const scnc::Program& p);
     void clearProgram();
     void setToolPosition(double x, double y, double z);
+    void setFollowTool(bool on);
     bool loadStl(const QString& path);   // triangles, mm
     void clearMesh();
     // Probed surface: colored, Z-exaggerated relief of a HeightMap.
@@ -92,6 +93,7 @@ private:
     bool perspective_ = false;
     QPoint lastMouse_;
 
+    bool followTool_ = false;
     QVector3D tool_{0, 0, 0};
     bool haveTool_ = false;
     double boundR_ = 50.0;   // scene radius for framing

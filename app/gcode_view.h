@@ -14,6 +14,7 @@ public:
 
     void setProgram(const scnc::Program& p);
     void clearProgram();
+    void setFollowTool(bool on);
     void setCopper(const Clipper2Lib::PathsD& copper,
                    const Clipper2Lib::PathsD& filledVoids = {});
     void clearCopper();
@@ -35,6 +36,7 @@ private:
 
     scnc::Program prog_;
     QVector<QPolygonF> rapids_, cuts_, copper_, filledVoids_;
+    bool followTool_ = false;
     double scale_ = 4.0;         // px per mm
     QPointF center_{0, 0};       // mm at widget centre
     QPoint dragStart_;

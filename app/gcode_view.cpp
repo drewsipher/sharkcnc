@@ -59,6 +59,13 @@ void GcodeView::setToolPosition(double x, double y) {
     toolX_ = x;
     toolY_ = y;
     haveTool_ = true;
+    if (followTool_) center_ = QPointF(x, -y);   // view space has y flipped
+    update();
+}
+
+void GcodeView::setFollowTool(bool on) {
+    followTool_ = on;
+    if (on && haveTool_) center_ = QPointF(toolX_, -toolY_);
     update();
 }
 

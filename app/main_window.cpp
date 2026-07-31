@@ -167,6 +167,12 @@ MainWindow::MainWindow() {
     connect(mode3d, &QAction::toggled, this, [this](bool on) {
         if (view3d_) viewStack_->setCurrentIndex(on ? 1 : 0);
     });
+    auto* follow = view->addAction("Follo&w tool");
+    follow->setCheckable(true);
+    connect(follow, &QAction::toggled, this, [this](bool on) {
+        view_->setFollowTool(on);
+        if (view3d_) view3d_->setFollowTool(on);
+    });
     auto* persp = view->addAction("&Perspective");
     persp->setCheckable(true);
     connect(persp, &QAction::toggled, this,
@@ -395,6 +401,15 @@ MainWindow::MainWindow() {
             [this](int acked, int total, bool running, bool paused) {
                 jobBar_->setRange(0, total);
                 jobBar_->setValue(acked);
+                if (running && !cumTime_.empty()) {
+                    const double tot = cumTime_.back();
+                    const double done =
+                        cumTime_[std::min<size_t>(acked, cumTime_.size() - 1)];
+                    jobBar_->setFormat(QString("%p%  -  %1 left")
+                                           .arg(fmtDuration(tot - done)));
+                } else {
+                    jobBar_->setFormat("%p%");
+                }
                 runBtn_->setEnabled(!running);
                 holdBtn_->setEnabled(running);
                 holdBtn_->setText(paused ? "Resume" : "Hold");
@@ -889,10 +904,22 @@ void MainWindow::loadProgramText(const QString& text, const QString& title) {
     }
     showProgram(program_);
     setWindowTitle("SharkCNC - " + shownTitle);
+    cumTime_ = cumulativeSeconds(program_);
+    const double est = cumTime_.empty() ? 0 : cumTime_.back();
     statusBar()->showMessage(
-        QString("%1 lines, %2 motion segments")
+        QString("%1 lines, %2 motion segments, est %3")
             .arg(programText_.count('\n'))
-            .arg(program_.segments.size()));
+            .arg(program_.segments.size())
+            .arg(fmtDuration(est)));
+}
+
+QString MainWindow::fmtDuration(double seconds) {
+    int s = int(seconds + 0.5);
+    if (s >= 3600)
+        return QString("%1:%2:%3").arg(s / 3600).arg((s / 60) % 60, 2, 10,
+                                                     QChar('0'))
+            .arg(s % 60, 2, 10, QChar('0'));
+    return QString("%1:%2").arg(s / 60).arg(s % 60, 2, 10, QChar('0'));
 }
 
 void MainWindow::loadStlPath(const QString& p) { if (view3d_) view3d_->loadStl(p); }

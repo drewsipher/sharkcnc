@@ -189,3 +189,12 @@ TEST_CASE("backlash: rejects zero config and relative programs") {
     BacklashOptions o; o.x = 0.1;
     CHECK_FALSE(applyBacklash(rel, o).ok);
 }
+
+TEST_CASE("cumulativeSeconds: feeds and rapids timed per line") {
+    // 60mm at F60 = 60s; 70mm rapid at 700mm/min = 6s
+    auto p = parseGcode("G21 G90\nG1 X60 F60\nG0 X130\n");
+    auto cum = cumulativeSeconds(p, 700);
+    REQUIRE(cum.size() == 4);   // 3 lines + index 0
+    CHECK(cum[2] == Catch::Approx(60.0).margin(0.01));
+    CHECK(cum[3] == Catch::Approx(66.0).margin(0.01));
+}
