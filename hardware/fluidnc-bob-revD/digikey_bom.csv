@@ -1,24 +1,24 @@
 Quantity,Manufacturer Part Number,Digi-Key Part Number,Description,Customer Reference
 2,SN74AHCT541N,296-4755-5-ND,TI octal buffer TTL-in DIP-20,U1
-10,MMBT2222A-7-F,,NPN SOT-23,Q1 Q2
-5,SMBJ5.0A,,TVS 5V standoff SMB (5V-in clamp + reverse crowbar),D1
-10,S1M-13-F,,Rectifier 1A 1000V SMA (flyback),D2
-5,WP7113GD,,LED 5mm green,LED1
-5,WP7113ID,,LED 5mm red,LED2
+10,MMBT2222A-7-F,MMBT2222A-FDICT-ND,NPN SOT-23,Q1 Q2
+5,SMBJ5.0A,SMBJ5.0ALFCT-ND,TVS 5V standoff SMB (5V-in clamp + reverse crowbar),D1
+10,S1M-13-F,S1M-FDICT-ND,Rectifier 1A 1000V SMA (flyback),D2
+5,WP7113GD,754-1263-ND,LED 5mm green,LED1
+5,WP7113ID,,LED 5mm red (DK PN ~754-1264-ND; BOM Mgr resolves MPN),LED2
 5,0466002.NR,F1457CT-ND,Fuse 2A 63V 1206 (5V-in),F1
-20,RC0805FR-07100KL,,Res 100k 0805 1%,R10-R17 R41 R43
-20,RC0805FR-0710KL,,Res 10k 0805 1%,R20-R24
-20,RC0805FR-071KL,,Res 1k 0805 1%,R30-R34 R40 R42 R50 R51
-20,RC0805FR-07100RL,,Res 100R 0805 1%,R60-R66
-20,CL21B104KBCNNNC,,Cap 100nF 50V X7R 0805,C4 C5 C20-C24
-5,CL31B106KAHNNNE,,Cap 10uF 25V X7R 1206,C3
-3,PPTC221LFBN-RC,,Socket strip 1x22 2.54mm,A1 socket rows
-1,ESP32-S3-DEVKITC-1-N8,,Espressif ESP32-S3 devkit (optional spare; verify row spacing),A1 spare
-2,1715721,,Phoenix MKDS 1.5/2-5.08 terminal 2-pos,J1 (5V-in)
-2,1715734,,Phoenix MKDS 1.5/3-5.08 terminal 3-pos,J10 spindle switch
 2,G5LE-14 DC5,Z1011-ND,Omron relay SPDT 10A/250VAC 5V coil,RLY1
-4,1715750,,Phoenix MKDS 1.5/5-5.08 terminal 5-pos,J2 J3 J4
-8,22-23-2021,,Molex KK-254 header 2-pos friction lock,J5-J9 J11
-10,22-01-3027,,Molex KK-254 housing 2-pos,cables
-50,08-50-0114,,Molex KK-254 crimp terminal 2759 22-30AWG,cables
-2,PRPC006DAAN-RC,,Pin header 2x6 2.54mm,J13 SD module
+1,ESP32-S3-DEVKITC-1-N8,1965-ESP32-S3-DEVKITC-1-N8-ND,Espressif ESP32-S3 devkit (OPTIONAL spare; board sockets existing devkit),A1 spare
+20,RC0805FR-07100KL,,Res 100k 0805 1% (pick pkg in BOM Mgr),R10-R17 R41 R43
+20,RC0805FR-0710KL,,Res 10k 0805 1% (pick pkg in BOM Mgr),R20-R24
+20,RC0805FR-071KL,,Res 1k 0805 1% (pick pkg in BOM Mgr),R30-R34 R40 R42 R50 R51
+20,RC0805FR-07100RL,,Res 100R 0805 1% (pick pkg in BOM Mgr),R60-R66
+20,CL21B104KBCNNNC,,Cap 100nF 50V X7R 0805 (pick pkg in BOM Mgr),C4 C5 C20-C24
+5,CL31B106KAHNNNE,,Cap 10uF 25V X7R 1206 (pick pkg in BOM Mgr),C3
+3,PPTC221LFBN-RC,S7020-ND,Socket strip 1x22 2.54mm (A1 devkit socket),A1 socket rows
+2,1715721,,Phoenix MKDS 1.5/2-5.08 terminal 2-pos (5V-in),J1
+4,1715750,277-13762-ND,Phoenix MKDS 1.5/5-5.08 terminal 5-pos,J2 J3 J4
+2,1715734,277-1264-ND,Phoenix MKDS 1.5/3-5.08 terminal 3-pos,J10 spindle switch
+8,22-23-2021,WM4200-ND,Molex KK-254 header 2-pos friction lock,J5-J9 J11
+2,PRPC006DAAN-RC,,Pin header 2x6 2.54mm (SD module),J13
+10,22-01-3027,WM2000-ND,Molex KK-254 housing 2-pos (cable side),cables
+50,08-50-0114,WM1114-ND,Molex KK-254 crimp terminal 2759 22-30AWG (cable side),cables

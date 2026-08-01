@@ -60,11 +60,11 @@
           "hatch_smoothing_level": 0,
           "hatch_smoothing_value": 0.1,
           "hatch_thickness": 1.0,
-          "min_clearance": 0.0,
+          "min_clearance": 0.5,
           "min_island_area": 10.0,
           "min_thickness": 0.25,
           "pad_connection": 1,
-          "remove_islands": 0,
+          "remove_islands": 1,
           "thermal_relief_gap": 0.5,
           "thermal_relief_spoke_width": 0.5
         }
@@ -78,43 +78,67 @@
       ],
       "drc_exclusions": [
         [
-          "items_not_allowed|17876600|112522000|c713ee8a-0245-4cc5-8f9c-7d72219f8c26|00000000-0000-0000-0000-000000000000",
+          "items_not_allowed|53695600|3098800|499caeaf-2b27-4923-a604-a332c48d96fb|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "items_not_allowed|18638600|125984000|1ca1010b-68c3-4936-884b-2ff5a61c333d|00000000-0000-0000-0000-000000000000",
+          "items_not_allowed|58795316|8827400|ab6c78bb-f924-4fcc-b8ca-7df97431b4f9|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "items_not_allowed|23718600|125984000|676a004c-cd8f-45f1-a1fc-0d6d8a4c4e98|00000000-0000-0000-0000-000000000000",
+          "items_not_allowed|60795316|14630400|3cc618fc-f3bd-45cc-8816-9edcdf549274|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "items_not_allowed|23876600|98322000|ab6c78bb-f924-4fcc-b8ca-7df97431b4f9|00000000-0000-0000-0000-000000000000",
+          "items_not_allowed|60795316|3098800|5cfaf744-bed8-46bb-9fc6-d11d916792ff|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "items_not_allowed|28798600|125984000|bdb44815-2d2d-4274-b3ef-16b14a549d19|00000000-0000-0000-0000-000000000000",
+          "items_not_allowed|72853632|15505450|fd5e06d7-a3cd-4525-8ce8-954754bf835f|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "items_not_allowed|29876600|112522000|fd5e06d7-a3cd-4525-8ce8-954754bf835f|00000000-0000-0000-0000-000000000000",
+          "items_not_allowed|72995316|2827400|c713ee8a-0245-4cc5-8f9c-7d72219f8c26|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "starved_thermal|29718000|42198000|3adbae19-e511-41d7-9f6f-ed9265170e74|01f11295-0b2a-4f1a-87c6-fc33df9e68e9|F.Cu",
+          "items_not_allowed|85534916|14065400|bdb44815-2d2d-4274-b3ef-16b14a549d19|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "unconnected_items|17876600|112522000|F.Cu|4|c713ee8a-0245-4cc5-8f9c-7d72219f8c26|1ca1010b-68c3-4936-884b-2ff5a61c333d",
+          "items_not_allowed|85534916|3905400|1ca1010b-68c3-4936-884b-2ff5a61c333d|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "unconnected_items|23718600|125984000|F.Cu|4|676a004c-cd8f-45f1-a1fc-0d6d8a4c4e98|ab6c78bb-f924-4fcc-b8ca-7df97431b4f9",
+          "items_not_allowed|85534916|8985400|676a004c-cd8f-45f1-a1fc-0d6d8a4c4e98|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
-          "unconnected_items|28798600|125984000|F.Cu|4|bdb44815-2d2d-4274-b3ef-16b14a549d19|fd5e06d7-a3cd-4525-8ce8-954754bf835f",
+          "silk_edge_clearance|33018492|98729800|53bb88f3-ec8d-4dc0-bc8a-e6e5aa8eaa5a|6856eedf-7e71-4c14-b2a6-ce81e3a6cd74",
+          ""
+        ],
+        [
+          "silk_edge_clearance|59993292|98729800|53bb88f3-ec8d-4dc0-bc8a-e6e5aa8eaa5a|d04a824f-fb27-457d-a871-88ca5df211ec",
+          ""
+        ],
+        [
+          "silk_edge_clearance|86968092|98729800|53bb88f3-ec8d-4dc0-bc8a-e6e5aa8eaa5a|c3d9c209-8a1e-44d1-9820-aa8970543f36",
+          ""
+        ],
+        [
+          "silk_edge_clearance|90373200|3990720|53bb88f3-ec8d-4dc0-bc8a-e6e5aa8eaa5a|d8ad4cf3-29e7-49f6-85ce-273529f905eb",
+          ""
+        ],
+        [
+          "unconnected_items|58795316|8827400|F.Cu|4|ab6c78bb-f924-4fcc-b8ca-7df97431b4f9|676a004c-cd8f-45f1-a1fc-0d6d8a4c4e98",
+          ""
+        ],
+        [
+          "unconnected_items|72995316|14827400|F.Cu|4|fd5e06d7-a3cd-4525-8ce8-954754bf835f|bdb44815-2d2d-4274-b3ef-16b14a549d19",
+          ""
+        ],
+        [
+          "unconnected_items|72995316|2827400|F.Cu|4|c713ee8a-0245-4cc5-8f9c-7d72219f8c26|1ca1010b-68c3-4936-884b-2ff5a61c333d",
           ""
         ]
       ],
@@ -251,7 +275,8 @@
         }
       ],
       "track_widths": [
-        0.0
+        0.0,
+        0.6
       ],
       "tuning_pattern_settings": {
         "diff_pair_defaults": {
@@ -668,7 +693,7 @@
           "group_by": false,
           "label": "Datasheet",
           "name": "Datasheet",
-          "show": true
+          "show": false
         },
         {
           "group_by": false,
@@ -686,7 +711,7 @@
           "group_by": false,
           "label": "Digikey",
           "name": "Digikey",
-          "show": true
+          "show": false
         }
       ],
       "filter_string": "",
@@ -737,7 +762,7 @@
         "uuid": "d27f0a00-3830-5100-af6a-a93fbdba8465"
       }
     ],
-    "used_designators": "#PWR19,#PWR21,#PWR23",
+    "used_designators": "C1-2,C6,#PWR19-24,#PWR27,#PWR47,#PWR51-55",
     "variants": []
   },
   "sheets": [
