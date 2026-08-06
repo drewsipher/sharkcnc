@@ -56,9 +56,10 @@ schematic netlist and the fabbed PCB pad nets).
    outputs get **100 Ω series resistors**: ~9 mA per driver opto
    (mid-spec) and caps the buffer package current at ~54 mA (< 75 mA
    abs max) — rev C could exceed the rating with all channels lit.
-5. **Driver ENABLE finally wired.** Per-axis terminal carries +5 V (EN+)
-   and a shared EN− sink (Q2, driven by GPIO9). Red LED2 lights when
-   motors are disabled. FluidNC: `shared_stepper_disable_pin: gpio.9`.
+5. **Driver ENABLE finally wired.** One shared enable pair on J4 pins
+   4/5: +5 V (all ENA+ daisy-chained) and EN− (all ENA− daisy-chained
+   into the Q2 sink, driven by GPIO9). Red LED2 lights when motors are
+   disabled. FluidNC: `shared_stepper_disable_pin: gpio.9`.
 6. **E-stop input on GPIO8**, conditioned like the limits (10 k pullup,
    1 k series, 100 nF). Wire an NC switch to GND. FluidNC v4:
    `control: estop_pin: gpio.8` — leave it commented out until J9 is
@@ -100,7 +101,9 @@ spam corrupts the stream; large transfers crash the firmware).
 | Ref | Type | Pins | Goes to |
 |---|---|---|---|
 | J1 | screw 2-pos | +5V, GND | external regulated 5 V supply (fused, TVS-protected) |
-| J2/J3/J4 | screw 5-pos | STEP, DIR, GND, +5V, EN− | FMD2740C: SP+, DIR+, (SP−+DIR− bridge), EN+, EN− |
+| J2 (X) | screw 5-pos | n/c, GND, XDIR, GND, XSTEP | FMD2740C X: DIR+→pin 3, SP+→pin 5, SP−+DIR− bridge→GND pin |
+| J3 (Y) | screw 5-pos | GND, YDIR, GND, YSTEP, GND | FMD2740C Y: DIR+→pin 2, SP+→pin 4, SP−+DIR− bridge→GND pin |
+| J4 (Z) | screw 5-pos | ZDIR, GND, ZSTEP, +5V, EN− | FMD2740C Z: DIR+→pin 1, SP+→pin 3; pins 4/5 = the **single shared** enable pair: daisy-chain ALL drivers' ENA+→pin 4 (+5V) and ENA−→pin 5 (EN−, Q2 sink — never wire ENA− to GND: enable opto stays energized = motors permanently disabled) |
 | J5/J6/J7 | Molex KK-254 2 | SIG, GND | X / Y / Z limit switch (closes to GND) |
 | J8 | Molex KK-254 2 | SIG, GND | probe |
 | J9 | Molex KK-254 2 | SIG, GND | E-stop (NC to GND) |
