@@ -1,0 +1,87 @@
+# fluidnc-bob rev D — bring-up config (FluidNC v4.0.4, ESP32-S3)
+#
+# Pin map taken from the AS-BUILT rev D board (schematic + PCB pad nets,
+# verified 2026-08-06). NOTE: rev D physically swapped X<->Z step/dir and
+# AUX<->spindle vs rev C — the rev D README's "map unchanged" table is wrong:
+#   X step/dir = gpio.7 / gpio.6      (rev C had Z here)
+#   Z step/dir = gpio.18 / gpio.17    (rev C had X here)
+#   spindle relay = gpio.4, AUX = gpio.5
+#   E-stop = gpio.8, shared EN (disable) = gpio.9
+#
+# Driver wiring assumed common-cathode as on rev C (step/dir ACTIVE HIGH).
+# If rewired common-anode, add :low to every step_pin and direction_pin.
+#
+# Limits/probe: 10k pullups to 3V3, switches close to GND -> ACTIVE LOW.
+# Unwired inputs read "not triggered" — safe for the bench.
+
+name: "Sherline mill (revD)"
+board: "fluidnc-bob-revD"
+
+# v4.x has no RMT engine on ESP32-S3; Timed is fine at our ~15 kHz max.
+stepping:
+  engine: Timed
+  idle_ms: 255
+  pulse_us: 5
+  dir_delay_us: 5
+  disable_delay_us: 0
+
+axes:
+  # EN_G -> R42 -> Q2 shared EN- sink. High = motors disabled (LED2 on),
+  # which is FluidNC's default disable polarity.
+  shared_stepper_disable_pin: gpio.9
+  x:
+    # 20 TPI screw, 200 steps/rev, 1600 usteps/rev (1/8) -> 1259.84
+    steps_per_mm: 1259.84
+    max_rate_mm_per_min: 700
+    acceleration_mm_per_sec2: 40
+    max_travel_mm: 228
+    motor0:
+      limit_neg_pin: gpio.42:low
+      standard_stepper:
+        step_pin: gpio.7
+        direction_pin: gpio.6:low
+  y:
+    steps_per_mm: 1259.84
+    max_rate_mm_per_min: 700
+    acceleration_mm_per_sec2: 40
+    max_travel_mm: 127
+    motor0:
+      limit_neg_pin: gpio.2:low
+      standard_stepper:
+        step_pin: gpio.16
+        direction_pin: gpio.15
+  z:
+    steps_per_mm: 1259.84
+    max_rate_mm_per_min: 400
+    acceleration_mm_per_sec2: 25
+    max_travel_mm: 158
+    motor0:
+      limit_neg_pin: gpio.1:low
+      standard_stepper:
+        step_pin: gpio.18
+        direction_pin: gpio.17
+
+probe:
+  pin: gpio.41:low
+
+# E-stop input: NC switch to GND with 10k pullup -> LOW at rest, HIGH when
+# pressed (or when nothing is wired!). estop_pin raises a critical alarm
+# only a soft reset clears, so leave this commented until an NC switch or
+# jumper is actually on J9, then uncomment.
+#control:
+#  estop_pin: gpio.8
+
+spi:
+  sck_pin: gpio.12
+  miso_pin: gpio.13
+  mosi_pin: gpio.11
+
+sdcard:
+  cs_pin: gpio.10
+  card_detect_pin: NO_PIN
+
+# Onboard G5LE-14 via Q1. M3/M4 energizes (COM->NO closes), M5 releases.
+relay:
+  output_pin: gpio.4
+  spinup_ms: 500
+  spindown_ms: 500

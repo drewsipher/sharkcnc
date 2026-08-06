@@ -3510,7 +3510,7 @@
 			)
 		)
 		(property "Value" "100k"
-			(at 0 1.65 0)
+			(at 0.6345 2.7 0)
 			(layer "F.Fab")
 			(uuid "f6b9f1da-8280-4e3a-9b9d-d7e916233521")
 			(effects
