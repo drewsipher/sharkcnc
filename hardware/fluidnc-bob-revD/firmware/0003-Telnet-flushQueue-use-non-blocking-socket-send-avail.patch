@@ -1,0 +1,64 @@
+From f59040300898172758d30eb0d8945520c30a64f6 Mon Sep 17 00:00:00 2001
+From: D Shark Industries <d.shark.industries@gmail.com>
+Date: Thu, 6 Aug 2026 16:28:54 -0400
+Subject: [PATCH 3/3] Telnet flushQueue: use non-blocking socket send;
+ availableForWrite() is always 0 on esp32
+
+---
+ FluidNC/src/WebUI/TelnetClient.cpp | 26 ++++++++++++++++----------
+ 1 file changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/FluidNC/src/WebUI/TelnetClient.cpp b/FluidNC/src/WebUI/TelnetClient.cpp
+index 46b69c4d..289ba795 100644
+--- a/FluidNC/src/WebUI/TelnetClient.cpp
++++ b/FluidNC/src/WebUI/TelnetClient.cpp
+@@ -6,6 +6,8 @@
+ #include "TelnetServer.h"
+ 
+ #include <WiFi.h>
++#include <lwip/sockets.h>  // ::send(), MSG_DONTWAIT
++#include <errno.h>
+ 
+ namespace WebUI {
+     TelnetClient::TelnetClient(WiFiClient* wifiClient) : Channel("telnet"), _wifiClient(wifiClient) {
+@@ -59,23 +61,27 @@ namespace WebUI {
+ 
+     // Non-blocking drain of the queue. Bytes that can't be sent now stay queued
+     // and go out on the next write().
++    // NB: this must NOT use WiFiClient::availableForWrite() — arduino-esp32's
++    // NetworkClient never overrides Print's default, which returns 0, so the
++    // queue would never drain. Use a non-blocking socket send instead.
+     void TelnetClient::flushQueue() {
++        int sockfd = _wifiClient->fd();
++        if (sockfd < 0) {
++            closeOnDisconnect();
++            return;
++        }
+         while (_txTail != _txHead) {
+             size_t contiguous = _txHead > _txTail ? _txHead - _txTail : TX_QUEUE_SIZE - _txTail;
+-            size_t canSend    = _wifiClient->availableForWrite();
+-            size_t toSend     = contiguous < canSend ? contiguous : canSend;
+-            if (toSend == 0) {
+-                return;  // nothing can be sent right now
+-            }
+-            size_t sent = _wifiClient->write(_txQueue.data() + _txTail, toSend);
++            int    sent       = ::send(sockfd, _txQueue.data() + _txTail, contiguous, MSG_DONTWAIT);
+             if (sent > 0) {
+-                _txTail = (_txTail + sent) % TX_QUEUE_SIZE;
++                _txTail = (_txTail + (size_t)sent) % TX_QUEUE_SIZE;
+                 continue;
+             }
+-            if (!_wifiClient->connected()) {
+-                _wifiClient->stop();  // hard error / peer gone
+-                closeOnDisconnect();
++            if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
++                return;  // socket send buffer full — drain on the next write()
+             }
++            _wifiClient->stop();  // hard error / peer gone
++            closeOnDisconnect();
+             return;
+         }
+     }
+-- 
+2.43.0
+

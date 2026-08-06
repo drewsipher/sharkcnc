@@ -15,7 +15,8 @@ existence-checked against the installed KiCad 10 libraries (one
 exception: the devkit socket uses the proven rev C custom footprint,
 which has no 3D model). Each non-passive part carries hidden **Digikey**
 and **Datasheet** URL properties. **Built and brought up 2026-08-06**:
-FluidNC v4.0.4 (wifi_s3), config loads clean, board at `sharkcnc.local`.
+FluidNC v4.0.4 **patched** (stock v4.0.4 crash-loops on S3 — see
+`firmware/README.md`), config loads clean, board at `sharkcnc.local`.
 Known rework on the built board: R40 (ZDIR series) was fabbed 1 k, fixed
 to 100R in the schematic — swap the part on the board (1 k gives the
 FMD2740C opto only ~3 mA).
