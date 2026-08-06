@@ -198,10 +198,15 @@ Read these before touching the relevant code.
   **Pin authority: `fluidnc-bob.kicad_pcb` (what was fabbed), NOT `design.py`
   or the README** — the layout revised pins after generation (SD moved to
   gpio 10-13) and generated artifacts can lag. Check the PCB pad nets first.
-  **Rev D** (`hardware/fluidnc-bob-revD/`, 2026-07-27): schematic + verified
-  netlist + DigiKey BOM for the successor board — onboard 36V→5V buck,
-  AHCT541 at 5V, EN wired (gpio.8), E-stop input (gpio.9), real connectors.
-  Same proven GPIO map. Awaiting parts order + Drew's layout.
+  **Rev D** (`hardware/fluidnc-bob-revD/`): **built and brought up
+  2026-08-06** — external 5V input, AHCT541 at 5V, EN wired (gpio.9),
+  E-stop input (gpio.8), real connectors. NOT the same GPIO map as rev C:
+  the AHCT541 channel reorder swapped X↔Z step/dir (X=7/6, Z=18/17) and
+  AUX↔spindle (spindle relay=4, AUX=5). As-built map + working FluidNC
+  v4.0.4 config: `hardware/fluidnc-bob-revD/config.yaml`. Board is at
+  `sharkcnc.local`; upload files via WebDAV
+  (`curl -T <file> http://sharkcnc.local/flash/<file>`), not XModem.
+  Pending rework: R40 (ZDIR) fabbed as 1k, should be 100R.
 - **Spindle:** relay on/off first (harvest a Songle relay off the UCNCV4);
   the AUX pad is wired for future isolated-PWM speed control. **Never wire
   logic to the Sherline speed pot — it's not mains-isolated.**
@@ -216,9 +221,11 @@ Read these before touching the relevant code.
 
 Roughly in order.
 
-- **M2 — Physical bring-up** (blocked on JLCPCB fab). Populate the board,
-  flash FluidNC-S3, wire limits/E-stop, migrate off the UCNCV4, validate the
-  full workflow on real copper. Verify the config.yaml pin map on hardware.
+- **M2 — Physical bring-up** (in progress; board built, flashed, on WiFi as
+  `sharkcnc.local`, config pin map verified against the fabbed PCB). Left:
+  R40 1k→100R rework, driver DIP switches + jog test, wire limits/E-stop
+  (then uncomment `estop_pin` in config.yaml), migrate off the UCNCV4,
+  validate the full workflow on real copper.
 - **Non-rectangular board outline.** `outline.cpp` currently takes a rectangle
   (`rectBoundary`). Parse the Edge.Cuts gerber into a real boundary polygon for
   arbitrary shapes.

@@ -14,7 +14,11 @@ global labels only for long-haul nets) passes `kicad-cli sch erc` with
 existence-checked against the installed KiCad 10 libraries (one
 exception: the devkit socket uses the proven rev C custom footprint,
 which has no 3D model). Each non-passive part carries hidden **Digikey**
-and **Datasheet** URL properties. Unbuilt.
+and **Datasheet** URL properties. **Built and brought up 2026-08-06**:
+FluidNC v4.0.4 (wifi_s3), config loads clean, board at `sharkcnc.local`.
+Known rework on the built board: R40 (ZDIR series) was fabbed 1 k, fixed
+to 100R in the schematic — swap the part on the board (1 k gives the
+FMD2740C opto only ~3 mA).
 
 **Devkit:** single 44-pin symbol + the rev C `ESP32_S3_DevKit_44_Socket`
 footprint (copied into `fluidnc-bob-revD.pretty/`, socketed via two
@@ -23,7 +27,10 @@ PPTC221LFBN-RC strips). DigiKey-stocked spare: ESP32-S3-DEVKITC-1-N8
 
 **Note:** the 74AHCT541 channel assignment differs from rev C (channels
 follow devkit pad order so the schematic bus is crossing-free). This is
-internal to the board — the GPIO map and `config.yaml` are unchanged.
+NOT internal to the board: it swapped the X and Z step/dir GPIOs and the
+AUX/spindle GPIOs relative to rev C. The as-built map is in the table
+below and in this directory's `config.yaml` (verified against both the
+schematic netlist and the fabbed PCB pad nets).
 
 ## What changed vs rev C (and why)
 
@@ -49,12 +56,12 @@ internal to the board — the GPIO map and `config.yaml` are unchanged.
    (mid-spec) and caps the buffer package current at ~54 mA (< 75 mA
    abs max) — rev C could exceed the rating with all channels lit.
 5. **Driver ENABLE finally wired.** Per-axis terminal carries +5 V (EN+)
-   and a shared EN− sink (Q2, driven by GPIO8). Red LED2 lights when
-   motors are disabled. FluidNC: `shared_stepper_disable_pin: gpio.8`.
-6. **E-stop input on GPIO9**, conditioned like the limits (10 k pullup,
-   1 k series, 100 nF). Wire an NC switch to GND. Configure per the
-   FluidNC control-pin docs for the firmware you flash (verify the key
-   name — v4 changed some control options).
+   and a shared EN− sink (Q2, driven by GPIO9). Red LED2 lights when
+   motors are disabled. FluidNC: `shared_stepper_disable_pin: gpio.9`.
+6. **E-stop input on GPIO8**, conditioned like the limits (10 k pullup,
+   1 k series, 100 nF). Wire an NC switch to GND. FluidNC v4:
+   `control: estop_pin: gpio.8` — leave it commented out until J9 is
+   wired (open input reads "pressed" → critical alarm at boot).
 7. **Real connectors** (rev C was solder pads): Phoenix MKDS 5.08 screw
    terminals for power/drivers/spindle, Molex KK-254 (friction lock,
    crimp housings in the BOM) for limits/probe/E-stop/aux; SD keeps the
@@ -65,27 +72,27 @@ internal to the board — the GPIO map and `config.yaml` are unchanged.
    line. Wire the spindle through COM+NO so a dead board = spindle off.
 8. **SD module runs from 3.3 V** (proven on the bench; keeps its level
    shifter below ESP-safe voltages).
-9. **GPIO map carried over unchanged from the fabbed, verified rev C
-   board** — the traced `.kicad_pcb` map, not the stale rev C docs — so
-   the working `config.yaml` needs only additions, no changes.
+9. **GPIO map mostly carried over from the fabbed rev C board**, but the
+   crossing-free 74AHCT541 channel ordering (see note above) swapped
+   X↔Z step/dir and AUX↔spindle. Limits, probe, and SD are unchanged.
 
-## GPIO map (ESP32-S3)
+## GPIO map (ESP32-S3, as-built — verified against PCB pad nets)
 
 | Signal | GPIO | | Signal | GPIO |
 |---|---|---|---|---|
-| X step / dir | 18 / 17 | | X / Y / Z limit | 42 / 2 / 1 |
+| X step / dir | 7 / 6 | | X / Y / Z limit | 42 / 2 / 1 |
 | Y step / dir | 16 / 15 | | Probe | 41 |
-| Z step / dir | 7 / 6 | | **E-stop (new)** | **9** |
-| Spindle relay | 5 | | SD CS / MOSI / SCK / MISO | 10 / 11 / 12 / 13 |
-| Aux out | 4 | | **Stepper disable (new)** | **8** |
+| Z step / dir | 18 / 17 | | **E-stop (new)** | **8** |
+| Spindle relay | 4 | | SD CS / MOSI / SCK / MISO | 10 / 11 / 12 / 13 |
+| Aux out | 5 | | **Stepper disable (new)** | **9** |
 
-## FluidNC config delta (relative to rev C `config.yaml`)
+## FluidNC config
 
-```yaml
-axes:
-  shared_stepper_disable_pin: gpio.8    # high = motors disabled (LED2 on)
-# E-stop switch (NC to GND) on gpio.9 — add per FluidNC control-pin docs
-```
+The full working config is `config.yaml` in this directory (flashed and
+verified on the built board). Update it there and push to the board with
+`curl -T config.yaml http://sharkcnc.local/flash/config.yaml`, then
+`$Bye` to reload — serial XModem is unreliable on v4.0.4 (task_wdt log
+spam corrupts the stream; large transfers crash the firmware).
 
 ## Connector wiring
 
@@ -96,7 +103,7 @@ axes:
 | J5/J6/J7 | Molex KK-254 2 | SIG, GND | X / Y / Z limit switch (closes to GND) |
 | J8 | Molex KK-254 2 | SIG, GND | probe |
 | J9 | Molex KK-254 2 | SIG, GND | E-stop (NC to GND) |
-| J10 | screw 3-pos | COM, NO, NC | spindle AC switch (onboard G5LE-14 relay contacts) |
+| J10 | screw 3-pos | NO, COM, NC (COM center) | spindle AC switch: line hot → COM, spindle hot → NO; NC unused (planned: 2-pos COM+NO next rev) |
 | J11 | Molex KK-254 2 | AUX, GND | spare buffered 5 V output (future spindle PWM) |
 | J13 | header 2×6 | 5=3V3, 7=MISO, 8=MOSI, 9=SCK, 10=CS, 11/12=GND | salvaged microSD module — **same pad map as fabbed rev C** |
 
